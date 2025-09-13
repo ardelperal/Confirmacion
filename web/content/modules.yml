@@ -1,0 +1,117 @@
+# Configuración de módulos del curso de Confirmación
+
+modules:
+  - code: "A"
+    title: "Fundamentos de la Fe"
+    description: "Introducción a los pilares básicos de la fe católica"
+    order: 1
+    sessions:
+      - code: "A1"
+        title: "Dios nos llama por nuestro nombre"
+        duration: 60
+      - code: "A2"
+        title: "Jesús, el Hijo de Dios"
+        duration: 60
+      - code: "A3"
+        title: "El Espíritu Santo en nuestras vidas"
+        duration: 60
+      - code: "A4"
+        title: "La Iglesia, familia de Dios"
+        duration: 60
+
+  - code: "B"
+    title: "La Vida en Cristo"
+    description: "Vivir como discípulos de Jesús en el mundo actual"
+    order: 2
+    sessions:
+      - code: "B1"
+        title: "Seguir a Jesús cada día"
+        duration: 60
+      - code: "B2"
+        title: "El amor al prójimo"
+        duration: 60
+      - code: "B3"
+        title: "Perdón y reconciliación"
+        duration: 60
+      - code: "B4"
+        title: "Testimonio cristiano"
+        duration: 60
+
+  - code: "C"
+    title: "Los Sacramentos"
+    description: "Los signos visibles del amor de Dios"
+    order: 3
+    sessions:
+      - code: "C1"
+        title: "¿Qué son los sacramentos?"
+        duration: 60
+      - code: "C2"
+        title: "Bautismo y Confirmación"
+        duration: 60
+      - code: "C3"
+        title: "La Eucaristía, centro de nuestra fe"
+        duration: 60
+      - code: "C4"
+        title: "Reconciliación y Unción"
+        duration: 60
+
+  - code: "D"
+    title: "La Oración Cristiana"
+    description: "Comunicarnos con Dios en la oración"
+    order: 4
+    sessions:
+      - code: "D1"
+        title: "¿Cómo orar?"
+        duration: 60
+      - code: "D2"
+        title: "El Padre Nuestro"
+        duration: 60
+      - code: "D3"
+        title: "María, modelo de oración"
+        duration: 60
+      - code: "D4"
+        title: "Oración comunitaria y personal"
+        duration: 60
+
+  - code: "E"
+    title: "La Vida Moral"
+    description: "Vivir según los valores del Evangelio"
+    order: 5
+    sessions:
+      - code: "E1"
+        title: "Los Mandamientos, camino de libertad"
+        duration: 60
+      - code: "E2"
+        title: "Las Bienaventuranzas"
+        duration: 60
+      - code: "E3"
+        title: "Conciencia y decisiones"
+        duration: 60
+      - code: "E4"
+        title: "Justicia y solidaridad"
+        duration: 60
+
+  - code: "F"
+    title: "Preparación a la Confirmación"
+    description: "Últimos pasos hacia el sacramento"
+    order: 6
+    sessions:
+      - code: "F1"
+        title: "El sacramento de la Confirmación"
+        duration: 60
+      - code: "F2"
+        title: "Los dones del Espíritu Santo"
+        duration: 60
+      - code: "F3"
+        title: "Compromiso cristiano"
+        duration: 60
+      - code: "F4"
+        title: "Celebración y envío"
+        duration: 60
+
+# Configuración general
+settings:
+  default_duration: 60
+  total_sessions: 24
+  target_age: "12-13"
+  course_name: "Curso de Confirmación"

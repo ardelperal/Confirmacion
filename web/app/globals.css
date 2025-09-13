@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos base */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* Estilos para impresión A4 */
+@media print {
+  @page {
+    size: A4;
+    margin: 2cm;
+  }
+  
+  body {
+    font-size: 11pt;
+    line-height: 1.4;
+    color: black;
+    background: white;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-before: always;
+  }
+  
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+  
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  .session-content {
+    font-family: 'Times New Roman', serif;
+  }
+  
+  .session-title {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-bottom: 12pt;
+  }
+  
+  .session-section {
+    margin-bottom: 16pt;
+  }
+  
+  .session-subsection {
+    margin-bottom: 8pt;
+  }
+}
+
+/* Estilos para previsualización A4 en pantalla */
+.a4-preview {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 2cm;
+  margin: 0 auto;
+  background: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  font-family: 'Times New Roman', serif;
+  font-size: 11pt;
+  line-height: 1.4;
+  color: black;
+}
+
+.a4-preview h1 {
+  font-size: 14pt;
+  font-weight: bold;
+  margin-bottom: 12pt;
+}
+
+.a4-preview h2 {
+  font-size: 12pt;
+  font-weight: bold;
+  margin-bottom: 8pt;
+}
+
+.a4-preview h3 {
+  font-size: 11pt;
+  font-weight: bold;
+  margin-bottom: 6pt;
+}
+
+.a4-preview .pagebreak {
+  border-top: 2px dashed #ccc;
+  margin: 20px 0;
+  padding-top: 20px;
+}
+
+/* Componentes personalizados */
+.btn-primary {
+  @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-md border border-gray-200;
+}
+
+.input-field {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}

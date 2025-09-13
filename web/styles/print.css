@@ -1,0 +1,198 @@
+/* styles/print.css */
+/* Estilos específicos para impresión A4 */
+
+/* Vista de previsualización A4 */
+.print-preview {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: white;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20mm;
+  box-sizing: border-box;
+}
+
+/* Clase para forzar salto de página */
+.pagebreak {
+  break-after: page;
+}
+
+/* Estilos de impresión */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Configuración de página A4 */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+
+  /* Evitar saltos de página en elementos importantes */
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Forzar salto de página */
+  .page-break {
+    page-break-before: always;
+  }
+
+  /* Tipografía optimizada para impresión */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    font-weight: bold;
+  }
+
+  h1 {
+    font-size: 18pt;
+    margin-bottom: 12pt;
+  }
+
+  h2 {
+    font-size: 16pt;
+    margin-bottom: 10pt;
+  }
+
+  h3 {
+    font-size: 14pt;
+    margin-bottom: 8pt;
+  }
+
+  p {
+    font-size: 11pt;
+    line-height: 1.4;
+    margin-bottom: 6pt;
+    orphans: 3;
+    widows: 3;
+  }
+
+  ul, ol {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  li {
+    margin-bottom: 3pt;
+  }
+
+  /* Enlaces en impresión */
+  a {
+    color: black;
+    text-decoration: none;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #666;
+  }
+}
+  
+  /* Listas y elementos estructurales */
+  ul, ol {
+    page-break-inside: avoid;
+  }
+  
+  /* Bloques de contenido importantes */
+  .session-section {
+    page-break-inside: avoid;
+    margin-bottom: 0.5cm;
+  }
+
+/* Estilos para la vista web que simula A4 */
+.session-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: white;
+  min-height: 100vh;
+}
+
+.session-content.print-mode {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 20mm;
+  margin: 2rem auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+/* Estilos para elementos específicos de la sesión */
+.session-header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.session-section {
+  margin-bottom: 2rem;
+}
+
+.session-section h3 {
+  color: #2563eb;
+  border-left: 4px solid #2563eb;
+  padding-left: 1rem;
+  margin-bottom: 1rem;
+}
+
+.time-indicator {
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.bible-quote {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+}
+
+.activity-steps {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.commitment-box {
+  background: #f0fdf4;
+  border: 2px solid #22c55e;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+/* Responsive para pantallas pequeñas */
+@media (max-width: 768px) {
+  .session-content {
+    padding: 1rem;
+  }
+  
+  .session-content.print-mode {
+    width: 100%;
+    margin: 1rem;
+    padding: 1rem;
+  }
+}
