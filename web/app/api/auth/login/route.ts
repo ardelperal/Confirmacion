@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyAdminPassword } from '@/lib/auth';
+import { logAuthAttempt } from '@/lib/logging-middleware';
+import { createLogContext } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
+  const logContext = createLogContext(request);
+  
   try {
     const { password } = await request.json();
 
@@ -10,11 +14,24 @@ export async function POST(request: NextRequest) {
     const isValidPassword = await verifyAdminPassword(password);
     
     if (!isValidPassword) {
+      // Log intento fallido
+      logAuthAttempt(false, {
+        ...logContext,
+        username: 'admin',
+        reason: 'invalid_password'
+      });
+      
       return NextResponse.json(
         { error: 'Contraseña incorrecta' },
         { status: 401 }
       );
     }
+
+    // Log intento exitoso
+    logAuthAttempt(true, {
+      ...logContext,
+      username: 'admin'
+    });
 
     // Crear respuesta exitosa
     const response = NextResponse.json({ success: true });
@@ -32,7 +49,15 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
+    // Log error de sistema
+    logAuthAttempt(false, {
+      ...logContext,
+      username: 'admin',
+      reason: 'system_error',
+      error: error.message
+    });
+    
     console.error('Error en login:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },

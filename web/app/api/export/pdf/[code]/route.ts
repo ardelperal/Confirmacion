@@ -4,11 +4,14 @@ import { getSession } from '@/lib/content-loader';
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import { logDownload, createLogContext } from '@/lib/logging-middleware';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const logContext = createLogContext(request);
+  
   try {
     const { code } = await params;
     const { searchParams } = new URL(request.url);
@@ -151,6 +154,14 @@ export async function GET(
     });
     
     await browser.close();
+    
+    // Log descarga exitosa
+    logDownload('pdf', code, {
+      ...logContext,
+      sessionTitle: session.frontMatter.title,
+      isAdmin: isAdmin,
+      fileSize: pdfBuffer.length
+    });
     
     // Generar nombre de archivo
     const slug = session.frontMatter.title

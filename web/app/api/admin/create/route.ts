@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { logAdminAction, createLogContext } from '@/lib/logging-middleware';
 
 const DEFAULT_TEMPLATE = `---
 code: {CODE}
@@ -92,6 +93,8 @@ Describir el objetivo catequético de esta sesión en una frase clara.
 `;
 
 export async function POST(request: NextRequest) {
+  const logContext = createLogContext(request);
+  
   try {
     const { code } = await request.json();
 
@@ -161,12 +164,27 @@ export async function POST(request: NextRequest) {
       console.error('Error writing audit log:', error);
     }
 
+    // Log acción administrativa
+    logAdminAction('CREATE', 'session', {
+      ...logContext,
+      resourceId: code,
+      module: moduleMap[code[0] as keyof typeof moduleMap],
+      title: title
+    });
+
     return NextResponse.json({ 
       ok: true, 
       code,
       message: 'Sesión creada exitosamente'
     });
-  } catch (error) {
+  } catch (error: any) {
+    // Log error administrativo
+    logAdminAction('CREATE_ERROR', 'session', {
+      ...logContext,
+      error: error.message,
+      stack: error.stack
+    });
+    
     console.error('Error creating session:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },

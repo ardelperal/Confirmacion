@@ -34,7 +34,7 @@ export interface VisibilityOptions {
   visibility: 'public' | 'admin';
 }
 
-const CONTENT_DIR = path.join(process.cwd(), 'content');
+const CONTENT_DIR = path.join(process.cwd(), '..', 'data', 'content');
 const SESSIONS_DIR = path.join(CONTENT_DIR, 'sessions');
 const MODULES_CONFIG = path.join(CONTENT_DIR, 'modules.yml');
 

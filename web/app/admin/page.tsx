@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PasswordChangeForm from '@/components/PasswordChangeForm';
+import LogsDashboard from '@/components/LogsDashboard';
 
 interface Session {
   code: string;
@@ -24,6 +25,7 @@ export default function AdminPanel() {
   const [newSessionCode, setNewSessionCode] = useState('');
   const [showNewSessionForm, setShowNewSessionForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'sessions' | 'logs' | 'settings'>('sessions');
   const router = useRouter();
 
   useEffect(() => {
@@ -32,12 +34,13 @@ export default function AdminPanel() {
 
   const loadSessions = async () => {
     try {
-      const response = await fetch('/api/admin/sessions');
+      const response = await fetch('/api/admin/sessions', {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setSessions(data.sessions || []);
       } else {
-        console.error('Error loading sessions');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -48,7 +51,10 @@ export default function AdminPanel() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include'
+      });
       router.push('/');
     } catch (error) {
       console.error('Error logging out:', error);
@@ -60,7 +66,8 @@ export default function AdminPanel() {
       const response = await fetch('/api/admin/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ code }),
+        credentials: 'include'
       });
       if (response.ok) {
         loadSessions();
@@ -75,7 +82,8 @@ export default function AdminPanel() {
       const response = await fetch('/api/admin/unpublish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ code }),
+        credentials: 'include'
       });
       if (response.ok) {
         loadSessions();
@@ -91,7 +99,8 @@ export default function AdminPanel() {
         const response = await fetch('/api/admin/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
+          body: JSON.stringify({ code }),
+          credentials: 'include'
         });
         if (response.ok) {
           loadSessions();
@@ -159,6 +168,8 @@ export default function AdminPanel() {
     return session.status === statusFilter;
   });
 
+
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString('es-ES', {
@@ -204,8 +215,47 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Controles */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
+          {/* Pestañas de navegación */}
+          <div className="mb-6">
+            <nav className="flex space-x-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('sessions')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'sessions'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Sesiones
+              </button>
+              <button
+                onClick={() => setActiveTab('logs')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'logs'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Logs del Sistema
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'settings'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Configuración
+              </button>
+            </nav>
+          </div>
+
+          {/* Contenido de Sesiones */}
+          {activeTab === 'sessions' && (
+            <>
+              {/* Controles */}
+              <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
             <div className="flex gap-4">
               <select
                 value={statusFilter}
@@ -363,16 +413,39 @@ export default function AdminPanel() {
             )}
           </div>
           
-          {/* Formulario de cambio de contraseña */}
-          {showPasswordForm && (
-            <div className="mt-6 bg-white shadow rounded-lg">
+              {/* Formulario de cambio de contraseña */}
+              {showPasswordForm && (
+                <div className="mt-6 bg-white shadow rounded-lg">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Cambiar Contraseña</h3>
+                  </div>
+                  <div className="px-6 py-4">
+                    <PasswordChangeForm 
+                      onSuccess={() => {
+                        setShowPasswordForm(false);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Contenido de Logs */}
+          {activeTab === 'logs' && (
+            <LogsDashboard />
+          )}
+
+          {/* Contenido de Configuración */}
+          {activeTab === 'settings' && (
+            <div className="bg-white shadow rounded-lg">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Cambiar Contraseña</h3>
+                <h3 className="text-lg font-medium text-gray-900">Configuración del Sistema</h3>
               </div>
               <div className="px-6 py-4">
                 <PasswordChangeForm 
                   onSuccess={() => {
-                    setShowPasswordForm(false);
+                    alert('Contraseña actualizada correctamente');
                   }}
                 />
               </div>

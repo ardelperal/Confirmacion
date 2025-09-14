@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { verifyAdminAuth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
+    // Verificar autenticación de admin
+    const authResult = await verifyAdminAuth(request);
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
     
     // Verificar si el directorio existe
     try {
