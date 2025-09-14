@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { log, createLogContext, createTimer, LogContext } from './logger';
 
+// Re-exportar createLogContext para uso en otros módulos
+export { createLogContext };
+
 // Middleware para logging de requests HTTP
 export function withLogging(handler: Function) {
   return async (req: NextRequest, ...args: any[]) => {

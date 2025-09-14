@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
     logAdminAction('CREATE', 'session', {
       ...logContext,
       resourceId: code,
-      module: moduleMap[code[0] as keyof typeof moduleMap],
+      module: moduleNames[code[0] as keyof typeof moduleNames],
       title: title
     });
 
