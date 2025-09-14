@@ -10,6 +10,7 @@ services:
     volumes:
       - ./data/content:/app/content
       - ./data/auth:/app/data
+      - ./data/logs:/app/data/logs
     restart: unless-stopped
     depends_on:
       - gotenberg

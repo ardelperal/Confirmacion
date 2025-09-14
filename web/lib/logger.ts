@@ -49,7 +49,11 @@ const consoleFormat = winston.format.combine(
 );
 
 // Directorio de logs (en data para incluir en backups)
-const logsDir = path.join(process.cwd(), '..', 'data', 'logs');
+// En Docker, el volumen está montado en /app/data/logs
+// En desarrollo local, usamos ../data/logs
+const logsDir = process.env.NODE_ENV === 'production' 
+  ? path.join(process.cwd(), 'data', 'logs')
+  : path.join(process.cwd(), '..', 'data', 'logs');
 
 // Crear directorio de logs si no existe
 try {
