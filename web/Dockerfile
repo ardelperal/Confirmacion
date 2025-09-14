@@ -1,59 +1,67 @@
-# Dockerfile para la aplicación de Catequesis
-FROM node:18-alpine AS base
+# Multi-stage build para optimizar tamaño de imagen
+# Etapa 1: Build
+FROM node:20-alpine AS builder
 
-# Instalar dependencias solo cuando sea necesario
-FROM base AS deps
-# Verificar https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine
-# para entender por qué libc6-compat podría ser necesario.
+# Instalar dependencias necesarias para el build
 RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-# Instalar dependencias basándose en el gestor de paquetes preferido
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Copiar archivos de dependencias
+COPY package*.json ./
 
-# Reconstruir el código fuente solo cuando sea necesario
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Instalar todas las dependencias (necesarias para el build)
+RUN npm install --legacy-peer-deps && npm cache clean --force
+
+# Copiar código fuente
 COPY . .
 
-# Variables de entorno de Next.js
-ENV NEXT_TELEMETRY_DISABLED 1
-
+# Build de la aplicación
 RUN npm run build
 
-# Imagen de producción, copiar todos los archivos y ejecutar next
-FROM base AS runner
+# Etapa 2: Runtime
+FROM node:20-alpine AS runner
+
+# Instalar dependencias de runtime para Puppeteer/Chrome
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
+
+# Configurar Puppeteer para usar Chromium instalado
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+# Crear usuario no-root con UID/GID específicos
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-
-# Aprovechar las salidas de trazas para reducir el tamaño de la imagen
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copiar archivos necesarios desde el builder
+    COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
+    COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+    COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/content ./content
 
 # Crear directorio de contenido con permisos correctos
-RUN mkdir -p /app/content && chown -R nextjs:nodejs /app/content
+RUN mkdir -p /app/content && chown -R nextjs:nodejs /app
 
+# Cambiar a usuario no-root
 USER nextjs
 
+# Exponer puerto
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+# Variables de entorno para producción
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME="0.0.0.0"
 
-# Comando de inicio
+# Start the application using standalone mode
 CMD ["node", "server.js"]

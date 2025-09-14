@@ -1,36 +1,46 @@
-version: '3.8'
-
 services:
-  catequesis-web:
+  web:
     build:
       context: ./web
       dockerfile: Dockerfile
+    env_file:
+      - .env
     ports:
-      - "3000:3000"
+      - "3001:3000"
+    volumes:
+      - ./data/content:/app/content
+      - ./data/auth:/app/data
+    restart: unless-stopped
+    depends_on:
+      - gotenberg
     environment:
       - NODE_ENV=production
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
-      - READ_ONLY=${READ_ONLY:-false}
-      - VISIBILITY_MODE=${VISIBILITY_MODE:-publish}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-    volumes:
-      # Volumen persistente para el contenido
-      - ./content:/app/content:rw
-      # Volumen para logs de auditoría
-      - audit_logs:/app/content/.audit.log
+      - GOTENBERG_URL=http://gotenberg:3000
+    networks:
+      - catequesis-network
+
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    ports:
+      - "3002:3000"
     restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-web-security"
+      - "--chromium-allow-list=file:///*"
+    networks:
+      - catequesis-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-volumes:
-  audit_logs:
-    driver: local
-
 networks:
-  default:
-    name: catequesis-network
+  catequesis-network:
+    driver: bridge
+
+volumes:
+  content-data:
+    driver: local

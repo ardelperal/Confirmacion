@@ -3,14 +3,14 @@ import { getSession, getAllSessions, getModule } from '@/lib/content-loader';
 import SessionView from '@/components/SessionView';
 
 interface SessionPageProps {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 export default async function SessionPage({ params }: SessionPageProps) {
-  const { code } = params;
-  const session = await getSession(code);
+  const { code } = await params;
+  const session = await getSession(code, { visibility: 'public' });
   
   if (!session) {
     notFound();
@@ -18,15 +18,12 @@ export default async function SessionPage({ params }: SessionPageProps) {
 
   // Obtener información del módulo para el breadcrumb
   const moduleData = await getModule(session.frontMatter.module);
-  const moduleTitle = moduleData?.title || `Módulo ${session.frontMatter.module}`;
+  const moduleTitle = moduleData?.info.title || `Módulo ${session.frontMatter.module}`;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <SessionView 
+      <SessionView
         session={session}
-        moduleTitle={moduleTitle}
-        showBreadcrumbs={true}
-        showDownloadButtons={true}
       />
     </div>
   );
@@ -38,10 +35,10 @@ export default async function SessionPage({ params }: SessionPageProps) {
  * Generar rutas estáticas para todas las sesiones
  */
 export async function generateStaticParams() {
-  const sessions = await getAllSessions();
+  const sessions = await getAllSessions({ visibility: 'public' });
   
-  return sessions.map((code) => ({
-    code: code
+  return sessions.map((session) => ({
+    code: session.code
   }));
 }
 
@@ -49,8 +46,8 @@ export async function generateStaticParams() {
  * Metadatos dinámicos para SEO
  */
 export async function generateMetadata({ params }: SessionPageProps) {
-  const { code } = params;
-  const session = await getSession(code);
+  const { code } = await params;
+  const session = await getSession(code, { visibility: 'public' });
   
   if (!session) {
     return {

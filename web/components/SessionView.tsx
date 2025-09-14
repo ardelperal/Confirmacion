@@ -1,224 +1,171 @@
-'use client';
-
 import { SessionContent } from '@/types';
-import { ClockIcon, UserGroupIcon, BookOpenIcon } from '@heroicons/react/24/outline';
-import DownloadButtons from './DownloadButtons';
-import Breadcrumbs, { getSessionBreadcrumbs } from './Breadcrumbs';
 
 interface SessionViewProps {
   session: SessionContent;
-  moduleTitle?: string;
-  showBreadcrumbs?: boolean;
-  showDownloadButtons?: boolean;
+  className?: string;
 }
 
-export default function SessionView({ 
-  session, 
-  moduleTitle = '', 
-  showBreadcrumbs = true, 
-  showDownloadButtons = true 
-}: SessionViewProps) {
-  const { frontMatter, content } = session;
-
-  // Procesar el contenido para manejar pagebreaks
-  const processContent = (rawContent: string) => {
-    return rawContent.split('---pagebreak---').map((section, index) => (
-      <div key={index} className={index > 0 ? 'page-break-before print:pt-8' : ''}>
-        <div 
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: section.trim() }}
-        />
-      </div>
-    ));
-  };
-
+export function SessionView({ session, className = '' }: SessionViewProps) {
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Breadcrumbs */}
-      {showBreadcrumbs && (
-        <Breadcrumbs 
-          items={getSessionBreadcrumbs(
-            frontMatter.code, 
-            frontMatter.title, 
-            frontMatter.module, 
-            moduleTitle
-          )} 
-        />
-      )}
-
-      {/* Header */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-lg mb-6 print:shadow-none print:border-0">
-        <div className="px-6 py-4">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Sesión {frontMatter.code}: {frontMatter.title}
-              </h1>
-              <p className="text-gray-600 text-lg">
-                {frontMatter.objective}
-              </p>
-            </div>
-            {showDownloadButtons && (
-              <div className="print:hidden">
-                <DownloadButtons 
-                  session={session}
-                  title={`Sesión ${frontMatter.code}`}
-                />
-              </div>
+    <article className={`session-view ${className}`}>
+      {/* Encabezado de la sesión */}
+      <header className="mb-8 print:mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              {session.frontMatter.code}
+            </span>
+            <span className="text-sm text-gray-500">
+              Módulo {session.frontMatter.module}
+            </span>
+            <span className="text-sm text-gray-500">
+              {session.frontMatter.duration} min
+            </span>
+          </div>
+          <div className="text-sm text-gray-500 print:hidden">
+            {session.frontMatter.status === 'published' ? (
+              <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                Publicado
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">
+                Borrador
+              </span>
             )}
           </div>
-
-          {/* Metadata */}
-          <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-            <div className="flex items-center">
-              <ClockIcon className="w-4 h-4 mr-1" />
-              {frontMatter.duration} minutos
-            </div>
-            <div className="flex items-center">
-              <UserGroupIcon className="w-4 h-4 mr-1" />
-              Módulo {frontMatter.module}
-            </div>
-            <div className="flex items-center">
-              <BookOpenIcon className="w-4 h-4 mr-1" />
-              Confirmación (12-13 años)
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Quick Info Cards */}
-      <div className="grid md:grid-cols-3 gap-4 mb-6 print:hidden">
-        {/* Materiales */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 mb-2">Materiales</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            {frontMatter.materials.map((material, index) => (
-              <li key={index}>• {material}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Referencias Bíblicas */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="font-semibold text-green-900 mb-2">Referencias Bíblicas</h3>
-          <ul className="text-sm text-green-800 space-y-1">
-            {frontMatter.biblical_references.map((ref, index) => (
-              <li key={index}>• {ref}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Términos Clave */}
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <h3 className="font-semibold text-purple-900 mb-2">Términos Clave</h3>
-          <div className="text-sm text-purple-800 space-y-1">
-            {Object.entries(frontMatter.key_terms).map(([term, definition], index) => (
-              <div key={index}>
-                <strong>{term}:</strong> {definition}
+        
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 print:text-2xl">
+          {session.frontMatter.title}
+        </h1>
+        
+        {/* Metadatos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 print:grid-cols-2 print:gap-2">
+          {session.frontMatter.biblical_references && session.frontMatter.biblical_references.length > 0 && (
+            <div>
+              <span className="font-medium text-gray-900">Referencias bíblicas:</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {session.frontMatter.biblical_references.map((ref, index) => (
+                  <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-700 print:bg-transparent print:border print:border-purple-300">
+                    {ref}
+                  </span>
+                ))}
               </div>
-            ))}
+            </div>
+          )}
+          
+          {session.frontMatter.catechism_references && session.frontMatter.catechism_references.length > 0 && (
+            <div>
+              <span className="font-medium text-gray-900">Catecismo:</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {session.frontMatter.catechism_references.map((ref, index) => (
+                  <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-700 print:bg-transparent print:border print:border-amber-300">
+                    CIC {ref}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Fechas */}
+        <div className="mt-4 flex space-x-6 text-xs text-gray-500 print:hidden">
+          {session.frontMatter.editedAt && (
+            <div>
+              <span className="font-medium">Editado:</span> {new Date(session.frontMatter.editedAt).toLocaleDateString('es-ES')}
+            </div>
+          )}
+          {session.frontMatter.publishedAt && (
+            <div>
+              <span className="font-medium">Publicado:</span> {new Date(session.frontMatter.publishedAt).toLocaleDateString('es-ES')}
+            </div>
+          )}
+        </div>
+      </header>
+      
+      {/* Contenido principal */}
+      <div 
+        className="prose prose-lg max-w-none print:prose-sm
+                   prose-headings:text-gray-900 prose-headings:font-semibold
+                   prose-p:text-gray-700 prose-p:leading-relaxed
+                   prose-strong:text-gray-900 prose-strong:font-semibold
+                   prose-em:text-gray-700 prose-em:italic
+                   prose-ul:text-gray-700 prose-ol:text-gray-700
+                   prose-li:text-gray-700 prose-li:leading-relaxed
+                   prose-blockquote:text-gray-600 prose-blockquote:border-blue-200
+                   prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1 prose-code:rounded
+                   prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200
+                   prose-hr:border-gray-300
+                   print:prose-headings:text-black
+                   print:prose-p:text-black
+                   print:prose-strong:text-black
+                   print:prose-em:text-black
+                   print:prose-ul:text-black
+                   print:prose-ol:text-black
+                   print:prose-li:text-black
+                   print:prose-blockquote:text-black
+                   print:prose-code:bg-transparent print:prose-code:border
+                   print:prose-pre:bg-transparent"
+        dangerouslySetInnerHTML={{ __html: session.htmlContent || '' }}
+      />
+      
+      {/* Footer para impresión */}
+      <footer className="hidden print:block mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
+        <div className="flex justify-between items-center">
+          <div>
+            Curso de Confirmación • Sesión {session.frontMatter.code}: {session.frontMatter.title}
+          </div>
+          <div>
+            Página {/* Se puede añadir numeración de página con CSS */}
           </div>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-lg print:shadow-none print:border-0">
-        <div className="px-6 py-6">
-          {processContent(content)}
-        </div>
-      </div>
-
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          .page-break-before {
-            page-break-before: always;
-          }
-          
-          .print\:hidden {
-            display: none !important;
-          }
-          
-          .print\:shadow-none {
-            box-shadow: none !important;
-          }
-          
-          .print\:border-0 {
-            border: 0 !important;
-          }
-          
-          .print\:pt-8 {
-            padding-top: 2rem !important;
-          }
-          
-          body {
-            font-size: 12pt;
-            line-height: 1.4;
-          }
-          
-          .prose {
-            font-size: 11pt;
-          }
-          
-          .prose h1 {
-            font-size: 16pt;
-            margin-bottom: 0.5rem;
-          }
-          
-          .prose h2 {
-            font-size: 14pt;
-            margin-bottom: 0.4rem;
-          }
-          
-          .prose h3 {
-            font-size: 12pt;
-            margin-bottom: 0.3rem;
-          }
-          
-          .prose p {
-            margin-bottom: 0.5rem;
-          }
-          
-          .prose ul, .prose ol {
-            margin-bottom: 0.5rem;
-          }
-          
-          .prose li {
-            margin-bottom: 0.2rem;
-          }
-        }
-      `}</style>
-    </div>
+      </footer>
+    </article>
   );
 }
 
-// Componente simplificado para vista previa
-export function SessionPreview({ session }: { session: SessionContent }) {
-  return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold text-gray-900">
-          {session.frontMatter.code}: {session.frontMatter.title}
-        </h3>
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-          {session.frontMatter.duration} min
-        </span>
-      </div>
-      <p className="text-sm text-gray-600 mb-3">
-        {session.frontMatter.objective}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {session.frontMatter.biblical_references.slice(0, 2).map((ref, index) => (
-          <span key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-            {ref}
-          </span>
-        ))}
-        {session.frontMatter.biblical_references.length > 2 && (
-          <span className="text-xs text-gray-500">
-            +{session.frontMatter.biblical_references.length - 2} más
-          </span>
-        )}
-      </div>
-    </div>
-  );
+export default SessionView;
+
+/* Estilos CSS adicionales para impresión - añadir al global.css */
+/*
+@media print {
+  .pagebreak {
+    page-break-before: always;
+    break-before: page;
+  }
+  
+  .session-view {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+  
+  .session-view h1 {
+    font-size: 18pt;
+    margin-bottom: 12pt;
+  }
+  
+  .session-view h2 {
+    font-size: 14pt;
+    margin-top: 16pt;
+    margin-bottom: 8pt;
+  }
+  
+  .session-view h3 {
+    font-size: 12pt;
+    margin-top: 12pt;
+    margin-bottom: 6pt;
+  }
+  
+  .session-view p {
+    margin-bottom: 8pt;
+  }
+  
+  .session-view ul, .session-view ol {
+    margin-bottom: 8pt;
+  }
+  
+  .session-view li {
+    margin-bottom: 4pt;
+  }
 }
+*/

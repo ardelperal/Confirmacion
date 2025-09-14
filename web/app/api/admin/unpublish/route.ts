@@ -1,0 +1,95 @@
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import matter from 'gray-matter';
+
+export async function POST(request: NextRequest) {
+  try {
+    const { code } = await request.json();
+    
+    // Validar código
+    if (!code || !code.match(/^[A-F][1-6]$/)) {
+      return NextResponse.json(
+        { error: 'Código inválido' },
+        { status: 400 }
+      );
+    }
+
+    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
+    const filePath = path.join(sessionsDir, `${code}.md`);
+    
+    // Verificar que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json(
+        { error: 'Sesión no encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Leer y parsear el archivo actual
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const { data: frontMatter, content } = matter(fileContent);
+
+    // Actualizar metadatos para retirar publicación
+    const now = new Date().toISOString();
+    const version = (frontMatter.version || 1) + 1;
+    
+    const updatedFrontMatter = {
+      ...frontMatter,
+      status: 'draft',
+      version,
+      editedBy: 'parroco',
+      editedAt: now
+    };
+
+    // Reconstruir y guardar el archivo
+    const updatedMarkdown = matter.stringify(content, updatedFrontMatter);
+    fs.writeFileSync(filePath, updatedMarkdown, 'utf8');
+
+    // Registrar en auditoría
+    await logAudit({
+      ts: now,
+      user: 'parroco',
+      action: 'unpublish',
+      code,
+      version
+    });
+
+    return NextResponse.json({ 
+      ok: true, 
+      version,
+      message: 'Sesión retirada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error unpublishing session:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
+  }
+}
+
+async function logAudit(entry: {
+  ts: string;
+  user: string;
+  action: string;
+  code: string;
+  version: number;
+}) {
+  try {
+    const contentDir = path.join(process.cwd(), 'content');
+    const auditPath = path.join(contentDir, '.audit.log');
+    
+    // Crear directorio si no existe
+    if (!fs.existsSync(contentDir)) {
+      fs.mkdirSync(contentDir, { recursive: true });
+    }
+
+    // Agregar entrada al log (formato JSONL)
+    const logLine = JSON.stringify(entry) + '\n';
+    fs.appendFileSync(auditPath, logLine, 'utf8');
+  } catch (error) {
+    console.error('Error logging audit:', error);
+    // No fallar la operación principal por errores de auditoría
+  }
+}

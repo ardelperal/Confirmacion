@@ -1,218 +1,109 @@
 'use client';
 
-import { ArrowDownTrayIcon, PrinterIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import { SessionContent } from '@/types';
+import { useState, useEffect } from 'react';
 
 interface DownloadButtonsProps {
-  session?: SessionContent;
-  sessions?: SessionContent[];
-  title: string;
+  code: string;
   className?: string;
 }
 
-export default function DownloadButtons({ session, sessions, title, className = '' }: DownloadButtonsProps) {
-  const handlePrint = () => {
-    window.print();
-  };
+export function DownloadButtons({ 
+  code, 
+  className = ''
+}: DownloadButtonsProps) {
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const handleDownloadPDF = async () => {
-    try {
-      const sessionCode = session?.frontMatter.code || 'multiple-sessions';
-      const response = await fetch(`/api/export/pdf/${sessionCode}`);
-      if (!response.ok) throw new Error('Error al generar PDF');
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${sessionCode}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error descargando PDF:', error);
-      alert('Error al descargar el PDF. Inténtalo de nuevo.');
-    }
-  };
+  // Detectar si el usuario es admin
+  useEffect(() => {
+    const checkAdminStatus = () => {
+      try {
+        const cookies = document.cookie.split(';');
+        const authCookie = cookies.find(c => c.trim().startsWith('auth-session='));
+        if (authCookie) {
+          const sessionData = JSON.parse(decodeURIComponent(authCookie.split('=')[1]));
+          setIsAdmin(sessionData.role === 'admin');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
 
-  const handleDownloadDOCX = async () => {
-    try {
-      const sessionCode = session?.frontMatter.code || 'multiple-sessions';
-      const response = await fetch(`/api/export/docx/${sessionCode}`);
-      if (!response.ok) throw new Error('Error al generar DOCX');
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${sessionCode}.docx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error descargando DOCX:', error);
-      alert('Error al descargar el DOCX. Inténtalo de nuevo.');
-    }
-  };
+    checkAdminStatus();
+  }, []);
 
-  const handleDownloadMarkdown = () => {
-    let content = '';
+  const handleDownload = (format: 'pdf' | 'docx' | 'md') => {
+    let url;
     
-    if (session) {
-      // Descargar una sola sesión
-      content = generateMarkdownContent(session);
-      downloadFile(content, `${session.frontMatter.code}-${session.frontMatter.title}.md`, 'text/markdown');
-    } else if (sessions) {
-      // Descargar múltiples sesiones
-      content = sessions.map(s => generateMarkdownContent(s)).join('\n\n---\n\n');
-      downloadFile(content, `${title.replace(/\s+/g, '_')}.md`, 'text/markdown');
+    if (format === 'md') {
+      // Para markdown, usar la API existente
+      url = `/api/export/markdown/${code.toLowerCase()}`;
+    } else {
+      // Para PDF y DOCX, agregar adminPreview si es admin
+      const baseUrl = `/api/export/${format}/${code.toLowerCase()}`;
+      url = isAdmin ? `${baseUrl}?adminPreview=1` : baseUrl;
     }
-  };
-
-  const generateMarkdownContent = (sessionData: SessionContent): string => {
-    const { frontMatter, content } = sessionData;
     
-    // Generar front-matter YAML
-    const yamlFrontMatter = `---
-code: "${frontMatter.code}"
-title: "${frontMatter.title}"
-module: "${frontMatter.module}"
-duration: ${frontMatter.duration}
-objective: "${frontMatter.objective}"
-materials:
-${frontMatter.materials.map(m => `  - "${m}"`).join('\n')}
-biblical_references:
-${frontMatter.biblical_references.map(ref => `  - "${ref}"`).join('\n')}
-catechism_references:
-${frontMatter.catechism_references.map(ref => `  - "${ref}"`).join('\n')}
-key_terms:
-${Object.entries(frontMatter.key_terms).map(([key, value]) => `  ${key}: "${value}"`).join('\n')}
-created_at: "${frontMatter.created_at}"
----
-
-`;
-    
-    return yamlFrontMatter + content;
-  };
-
-  const downloadFile = (content: string, filename: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Abrir en nueva ventana para descargas
+    window.open(url, '_blank');
   };
 
   return (
-    <div className={`flex flex-wrap gap-2 ${className}`}>
-      {/* Botón de imprimir */}
+    <div className={`flex items-center space-x-2 print:hidden ${className}`}>
+      <span className="text-sm text-gray-600 mr-2">Descargar:</span>
+      
+      {/* Botón PDF */}
       <button
-        onClick={handlePrint}
-        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        title="Imprimir"
+        onClick={() => handleDownload('pdf')}
+        className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+        title="Descargar como PDF"
       >
-        <PrinterIcon className="w-4 h-4 mr-2" />
+        <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+        PDF
+      </button>
+      
+      {/* Botón DOCX */}
+      <button
+        onClick={() => handleDownload('docx')}
+        className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        title="Descargar como Word"
+      >
+        <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+        DOCX
+      </button>
+      
+      {/* Botón Markdown (solo admin) */}
+      {isAdmin && (
+        <button
+          onClick={() => handleDownload('md')}
+          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+          title="Descargar Markdown (Admin)"
+        >
+          <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2v8h10V6H5z" clipRule="evenodd" />
+          </svg>
+          MD
+        </button>
+      )}
+      
+      {/* Botón de impresión (solo admin) */}
+      {isAdmin && (
+        <button
+          onClick={() => window.print()}
+          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+          title="Imprimir"
+        >
+          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
         Imprimir
       </button>
-
-      {/* Botón de descargar Markdown */}
-      <button
-        onClick={handleDownloadMarkdown}
-        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        title="Descargar Markdown"
-      >
-        <DocumentTextIcon className="w-4 h-4 mr-2" />
-        Markdown
-      </button>
-
-      {/* Botón de descargar PDF */}
-      <button
-        onClick={handleDownloadPDF}
-        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        title="Descargar PDF"
-      >
-        <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-        PDF
-      </button>
-
-      {/* Botón de descargar DOCX */}
-      <button
-        onClick={handleDownloadDOCX}
-        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        title="Descargar DOCX"
-      >
-        <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-        DOCX
-      </button>
+      )}
     </div>
   );
 }
 
-export function QuickDownloadButton({ session }: { session: SessionContent }) {
-  const handleDownloadPDF = async () => {
-    try {
-      const response = await fetch(`/api/export/pdf/${session.frontMatter.code}`);
-      if (!response.ok) throw new Error('Error al generar PDF');
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sesion-${session.frontMatter.code}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error descargando PDF:', error);
-      alert('Error al descargar el PDF. Inténtalo de nuevo.');
-    }
-  };
-
-  const handleDownloadDOCX = async () => {
-    try {
-      const response = await fetch(`/api/export/docx/${session.frontMatter.code}`);
-      if (!response.ok) throw new Error('Error al generar DOCX');
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `sesion-${session.frontMatter.code}.docx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error descargando DOCX:', error);
-      alert('Error al descargar el DOCX. Inténtalo de nuevo.');
-    }
-  };
-
-  return (
-    <div className="flex gap-1">
-      <button
-        onClick={handleDownloadPDF}
-        className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-        title="Descargar PDF"
-      >
-        <ArrowDownTrayIcon className="w-3 h-3 mr-1" />
-        PDF
-      </button>
-      <button
-        onClick={handleDownloadDOCX}
-        className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-600 hover:text-green-800 transition-colors"
-        title="Descargar DOCX"
-      >
-        <ArrowDownTrayIcon className="w-3 h-3 mr-1" />
-        DOCX
-      </button>
-    </div>
-  );
-}
+export default DownloadButtons;

@@ -1,14 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json(
-      { success: true, message: 'Sesión cerrada correctamente' },
-      { status: 200 }
-    );
+    // Crear respuesta exitosa
+    const response = NextResponse.json({ success: true });
 
-    // Eliminar cookie de autenticación
-    response.cookies.delete('auth-token');
+    // Borrar cookie estableciendo maxAge a 0
+    response.cookies.set('auth-session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/'
+    });
 
     return response;
   } catch (error) {

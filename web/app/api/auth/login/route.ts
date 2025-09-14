@@ -1,53 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminPassword, generateToken } from '@/lib/auth';
-import { AuthUser } from '@/types';
+import { cookies } from 'next/headers';
+import { verifyAdminPassword } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json();
 
-    if (!password) {
-      return NextResponse.json(
-        { error: 'Contraseña requerida' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar contraseña
-    const isValid = await verifyAdminPassword(password);
-
-    if (!isValid) {
+    // Verificar contraseña usando el sistema dual de autenticación
+    const isValidPassword = await verifyAdminPassword(password);
+    
+    if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Contraseña incorrecta' },
         { status: 401 }
       );
     }
 
-    // Crear usuario admin
-    const user: AuthUser = {
-      id: 'admin',
-      username: 'parroco',
-      role: 'admin'
-    };
+    // Crear respuesta exitosa
+    const response = NextResponse.json({ success: true });
 
-    // Generar token
-    const token = generateToken(user);
-
-    // Crear respuesta con cookie
-    const response = NextResponse.json(
-      { 
-        success: true, 
-        user: { username: user.username, role: user.role } 
-      },
-      { status: 200 }
-    );
-
-    // Configurar cookie httpOnly
-    response.cookies.set('auth-token', token, {
+    // Establecer cookie httpOnly con rol admin
+    const cookieStore = await cookies();
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    response.cookies.set('auth-session', JSON.stringify({ role: 'admin' }), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 horas
+      maxAge: 60 * 60 * 24 * 7, // 7 días
       path: '/'
     });
 

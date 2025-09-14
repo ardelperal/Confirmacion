@@ -16,6 +16,24 @@ import {
 } from './markdown-parser';
 import { getVisibilityMode } from '@/lib/auth';
 
+// Tipos para las nuevas funciones
+export interface SessionSummary {
+  code: string;
+  title: string;
+  module: string;
+  status: 'draft' | 'published' | 'archived';
+  version: number;
+  updated: string; // editedAt || updated_at
+  publishedAt?: string | null;
+  duration: number;
+  bible: string[];
+  cic: string[];
+}
+
+export interface VisibilityOptions {
+  visibility: 'public' | 'admin';
+}
+
 const CONTENT_DIR = path.join(process.cwd(), 'content');
 const SESSIONS_DIR = path.join(CONTENT_DIR, 'sessions');
 const MODULES_CONFIG = path.join(CONTENT_DIR, 'modules.yml');
@@ -84,10 +102,15 @@ export async function getModuleInfo(moduleCode: string): Promise<ModuleInfo | nu
 /**
  * Verifica si una sesión es visible según las políticas de visibilidad
  */
-function isSessionVisible(session: SessionContent): boolean {
+function isSessionVisible(session: SessionContent, visibility: 'public' | 'admin' = 'public'): boolean {
+  // Si es vista admin, mostrar todas
+  if (visibility === 'admin') {
+    return true;
+  }
+  
   const visibilityMode = getVisibilityMode();
   
-  // Verificar estado editorial según el modo de visibilidad
+  // Para vista pública, verificar estado editorial según el modo de visibilidad
   if (visibilityMode === 'publish') {
     return session.frontMatter.status === 'published';
   } else if (visibilityMode === 'edited') {
@@ -101,15 +124,15 @@ function isSessionVisible(session: SessionContent): boolean {
 /**
  * Obtiene una sesión específica por su código
  * @param sessionCode Código de la sesión (ej: "A1")
- * @param checkVisibility Si debe verificar la visibilidad de la sesión
+ * @param options Opciones de visibilidad
  * @returns Contenido de la sesión o null si no existe
  */
-export async function getSession(sessionCode: string, checkVisibility: boolean = true): Promise<SessionContent | null> {
+export async function getSession(sessionCode: string, options: VisibilityOptions = { visibility: 'public' }): Promise<SessionContent | null> {
   const normalizedCode = sessionCode.toUpperCase();
   const cacheKey = `session-${normalizedCode}`;
   
   const cached = getFromCache<SessionContent>(cacheKey);
-  if (cached && !checkVisibility) return cached;
+  if (cached && options.visibility === 'public') return cached;
 
   try {
     // Buscar archivo de sesión
@@ -136,7 +159,7 @@ export async function getSession(sessionCode: string, checkVisibility: boolean =
 
     // Leer y parsear el archivo
     const fileContent = fs.readFileSync(sessionFile, 'utf-8');
-    const parsed = parseMarkdown(fileContent);
+    const parsed = await parseMarkdown(fileContent);
 
     // Validar front-matter
     if (!validateSessionFrontMatter(parsed.frontMatter)) {
@@ -155,8 +178,8 @@ export async function getSession(sessionCode: string, checkVisibility: boolean =
       htmlContent: parsed.htmlContent
     };
 
-    // Verificar visibilidad si es necesario
-    if (checkVisibility && !isSessionVisible(sessionContent)) {
+    // Verificar visibilidad según las opciones
+    if (!isSessionVisible(sessionContent, options.visibility)) {
       return null;
     }
 
@@ -173,9 +196,9 @@ export async function getSession(sessionCode: string, checkVisibility: boolean =
  * @param moduleCode Código del módulo (ej: "A")
  * @returns Contenido completo del módulo con todas sus sesiones
  */
-export async function getModule(moduleCode: string): Promise<ModuleContent | null> {
+export async function getModule(moduleCode: string, options: VisibilityOptions = { visibility: 'public' }): Promise<ModuleContent | null> {
   const normalizedCode = moduleCode.toUpperCase();
-  const cacheKey = `module-${normalizedCode}`;
+  const cacheKey = `module-${normalizedCode}-${options.visibility}`;
   
   const cached = getFromCache<ModuleContent>(cacheKey);
   if (cached) return cached;
@@ -192,7 +215,7 @@ export async function getModule(moduleCode: string): Promise<ModuleContent | nul
     const sessions: SessionContent[] = [];
     
     for (const sessionInfo of moduleInfo.sessions) {
-      const session = await getSession(sessionInfo.code);
+      const session = await getSession(sessionInfo.code, options);
       if (session) {
         sessions.push(session);
       } else {
@@ -214,12 +237,13 @@ export async function getModule(moduleCode: string): Promise<ModuleContent | nul
 }
 
 /**
- * Obtiene la lista de todas las sesiones disponibles
- * @param includeAll Si debe incluir todas las sesiones independientemente de su visibilidad
+ * Obtiene la lista de todas las sesiones disponibles con información completa
+ * @param options Opciones de visibilidad
+ * @returns Array de resúmenes de sesiones
  */
-export async function getAllSessions(includeAll: boolean = false): Promise<string[]> {
-  const cacheKey = includeAll ? 'all-sessions-admin' : 'all-sessions';
-  const cached = getFromCache<string[]>(cacheKey);
+export async function getAllSessions(options: VisibilityOptions = { visibility: 'public' }): Promise<SessionSummary[]> {
+  const cacheKey = `all-sessions-${options.visibility}`;
+  const cached = getFromCache<SessionSummary[]>(cacheKey);
   if (cached) return cached;
 
   try {
@@ -232,23 +256,33 @@ export async function getAllSessions(includeAll: boolean = false): Promise<strin
       .map(file => extractSessionCode(file))
       .filter(code => code !== null) as string[];
 
-    const uniqueCodes = [...new Set(files)].sort();
+    const uniqueCodes = Array.from(new Set(files)).sort();
+    const sessions: SessionSummary[] = [];
     
-    // Filtrar por visibilidad si no es admin
-    if (!includeAll) {
-      const visibleCodes: string[] = [];
-      for (const code of uniqueCodes) {
-        const session = await getSession(code, false); // No verificar visibilidad aquí
-        if (session && isSessionVisible(session)) {
-          visibleCodes.push(code);
+    for (const code of uniqueCodes) {
+      const session = await getSession(code, { visibility: 'admin' }); // Cargar sin filtro para obtener datos
+      if (session) {
+        // Aplicar filtro de visibilidad
+        if (isSessionVisible(session, options.visibility)) {
+          const summary: SessionSummary = {
+            code: session.frontMatter.code,
+            title: session.frontMatter.title,
+            module: session.frontMatter.module,
+            status: session.frontMatter.status || 'draft',
+            version: session.frontMatter.version || 1,
+            updated: session.frontMatter.editedAt || session.frontMatter.updated_at || session.frontMatter.created_at || new Date().toISOString(),
+            publishedAt: session.frontMatter.publishedAt || null,
+            duration: session.frontMatter.duration,
+            bible: session.frontMatter.biblical_references || [],
+            cic: session.frontMatter.catechism_references || []
+          };
+          sessions.push(summary);
         }
       }
-      setCache(cacheKey, visibleCodes);
-      return visibleCodes;
     }
     
-    setCache(cacheKey, uniqueCodes);
-    return uniqueCodes;
+    setCache(cacheKey, sessions);
+    return sessions;
   } catch (error) {
     console.error('Error getting all sessions:', error);
     return [];
@@ -269,10 +303,17 @@ export async function getAllModules(): Promise<string[]> {
 }
 
 /**
+ * Genera el índice público de sesiones para /api/index.json
+ */
+export async function buildIndex(options: VisibilityOptions = { visibility: 'public' }): Promise<SessionSummary[]> {
+  return await getAllSessions(options);
+}
+
+/**
  * Verifica si una sesión existe
  */
 export async function sessionExists(sessionCode: string): Promise<boolean> {
-  const session = await getSession(sessionCode);
+  const session = await getSession(sessionCode, { visibility: 'admin' });
   return session !== null;
 }
 

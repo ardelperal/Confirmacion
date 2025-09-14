@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { AuthUser, AppConfig } from '@/types';
+import { verifyParishPassword } from './parish-auth';
 
 // Configuración desde variables de entorno
 export function getAppConfig(): AppConfig {
@@ -13,12 +14,17 @@ export function getAppConfig(): AppConfig {
   };
 }
 
-// Verificar contraseña de admin
+// Verificar contraseña de admin (dual: desarrollador + párroco)
 export async function verifyAdminPassword(password: string): Promise<boolean> {
   const config = getAppConfig();
-  // En producción, la contraseña debería estar hasheada
-  // Por simplicidad, comparamos directamente
-  return password === config.adminPassword;
+  
+  // Verificar contraseña maestra del desarrollador (desde .env)
+  if (password === config.adminPassword) {
+    return true;
+  }
+  
+  // Verificar contraseña del párroco (desde archivo)
+  return await verifyParishPassword(password);
 }
 
 // Generar JWT token
@@ -49,7 +55,7 @@ export function verifyToken(token: string): AuthUser | null {
 // Obtener usuario autenticado desde cookies
 export async function getAuthenticatedUser(): Promise<AuthUser | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
     
     if (!token) {
@@ -79,3 +85,56 @@ export function getVisibilityMode(): 'publish' | 'edited' {
   const config = getAppConfig();
   return config.visibilityMode;
 }
+
+// Verificar autenticación de admin para APIs
+export async function verifyAdminAuth(request?: Request) {
+  let userIsAdmin = false;
+  
+  if (request) {
+    // Si se proporciona request, verificar cookies directamente
+    const cookieHeader = request.headers.get('cookie');
+    if (cookieHeader) {
+      const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      const token = cookies['auth-token'];
+      const sessionData = cookies['auth-session'];
+      
+      if (token) {
+        const user = verifyToken(token);
+        userIsAdmin = user?.role === 'admin';
+      } else if (sessionData) {
+        try {
+          const decodedSession = decodeURIComponent(sessionData);
+          const session = JSON.parse(decodedSession);
+          userIsAdmin = session?.role === 'admin';
+        } catch (error) {
+          // Si no se puede parsear la sesión, no está autorizado
+          userIsAdmin = false;
+        }
+      }
+    }
+  } else {
+    // Fallback al método original
+    userIsAdmin = await isAdmin();
+  }
+  
+  return {
+    success: userIsAdmin,
+    user: userIsAdmin ? { role: 'admin' } : null
+  };
+}
+
+// Configuración de NextAuth (placeholder para compatibilidad)
+export const authOptions = {
+  // Esta configuración se puede expandir si se necesita NextAuth completo
+  providers: [],
+  callbacks: {
+    async session({ session, token }: any) {
+      return session;
+    },
+  },
+};

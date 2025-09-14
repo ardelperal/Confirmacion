@@ -1,72 +1,92 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import Fuse from 'fuse.js';
-import { SessionContent } from '@/types';
 import Link from 'next/link';
+import Fuse, { FuseResult } from 'fuse.js';
+
+interface SessionSummary {
+  code: string;
+  title: string;
+  module: string;
+  status: string;
+  bible: string[];
+  cic: string[];
+}
 
 interface SearchResult {
-  item: SessionContent;
-  score?: number;
-  matches?: Fuse.FuseResultMatch[];
+  item: SessionSummary;
+  matches?: FuseResult<SessionSummary>['matches'];
 }
 
 interface SearchBoxProps {
-  sessions: SessionContent[];
   placeholder?: string;
-  maxResults?: number;
   className?: string;
 }
 
-export default function SearchBox({ 
-  sessions, 
-  placeholder = "Buscar sesiones...", 
-  maxResults = 10,
+export function SearchBox({ 
+  placeholder = "Buscar sesiones por tema, código o contenido...", 
   className = '' 
 }: SearchBoxProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [fuse, setFuse] = useState<Fuse<SessionSummary> | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Configuración de Fuse.js
-  const fuse = new Fuse(sessions, {
+  const fuseOptions = {
     keys: [
-      { name: 'frontMatter.title', weight: 0.3 },
-      { name: 'frontMatter.code', weight: 0.2 },
-      { name: 'frontMatter.objective', weight: 0.2 },
-      { name: 'content', weight: 0.15 },
-      { name: 'frontMatter.biblical_references', weight: 0.1 },
-      { name: 'frontMatter.key_terms', weight: 0.05 }
+      { name: 'title', weight: 0.4 },
+      { name: 'code', weight: 0.3 },
+      { name: 'bible', weight: 0.15 },
+      { name: 'cic', weight: 0.15 }
     ],
-    threshold: 0.4,
-    includeScore: true,
+    threshold: 0.3,
     includeMatches: true,
+    includeScore: true,
     minMatchCharLength: 2
-  });
+  };
 
-  // Realizar búsqueda
+  // Cargar datos del índice al montar el componente
   useEffect(() => {
-    if (query.trim().length < 2) {
+    const loadSearchIndex = async () => {
+      try {
+        const response = await fetch('/api/index.json');
+        const data = await response.json();
+        if (data.success) {
+          setSessions(data.data);
+          setFuse(new Fuse(data.data, fuseOptions));
+        }
+      } catch (error) {
+        console.error('Error loading search index:', error);
+      }
+    };
+
+    loadSearchIndex();
+  }, []);
+
+  // Manejar búsqueda
+  useEffect(() => {
+    if (!query.trim() || !fuse) {
       setResults([]);
-      setIsOpen(false);
+      setShowResults(false);
       return;
     }
 
-    const searchResults = fuse.search(query, { limit: maxResults });
+    setIsLoading(true);
+    const searchResults = fuse.search(query.trim()).slice(0, 8);
     setResults(searchResults);
-    setIsOpen(true);
-    setSelectedIndex(-1);
-  }, [query, maxResults]);
+    setShowResults(true);
+    setIsLoading(false);
+  }, [query, fuse]);
 
   // Cerrar resultados al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        setShowResults(false);
       }
     };
 
@@ -74,164 +94,104 @@ export default function SearchBox({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Navegación con teclado
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || results.length === 0) return;
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev => 
-          prev < results.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (selectedIndex >= 0) {
-          const selectedResult = results[selectedIndex];
-          window.location.href = `/session/${selectedResult.item.frontMatter.code}`;
-        }
-        break;
-      case 'Escape':
-        setIsOpen(false);
-        setSelectedIndex(-1);
-        inputRef.current?.blur();
-        break;
-    }
-  };
-
-  const clearSearch = () => {
-    setQuery('');
-    setResults([]);
-    setIsOpen(false);
-    inputRef.current?.focus();
-  };
-
-  const highlightMatch = (text: string, matches?: Fuse.FuseResultMatch[]) => {
+  // Función para resaltar coincidencias
+  const highlightMatch = (text: string, matches?: FuseResult<SessionSummary>['matches']) => {
     if (!matches || matches.length === 0) return text;
-    
-    // Simplificado: solo resaltar la primera coincidencia
-    const match = matches[0];
-    if (!match.indices || match.indices.length === 0) return text;
-    
-    const [start, end] = match.indices[0];
-    return (
-      <>
-        {text.substring(0, start)}
-        <mark className="bg-yellow-200 px-1 rounded">
-          {text.substring(start, end + 1)}
-        </mark>
-        {text.substring(end + 1)}
-      </>
-    );
+
+    let highlightedText = text;
+    const sortedMatches = matches
+      .filter(match => match.key === 'title' || match.key === 'code')
+      .sort((a, b) => (b.indices[0]?.[0] || 0) - (a.indices[0]?.[0] || 0));
+
+    sortedMatches.forEach(match => {
+      match.indices.forEach(([start, end]) => {
+        const before = highlightedText.slice(0, start);
+        const highlighted = highlightedText.slice(start, end + 1);
+        const after = highlightedText.slice(end + 1);
+        highlightedText = before + `<mark class="bg-yellow-200 px-1 rounded">${highlighted}</mark>` + after;
+      });
+    });
+
+    return highlightedText;
   };
 
   return (
     <div ref={searchRef} className={`relative ${className}`}>
-      {/* Input de búsqueda */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-        </div>
         <input
-          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => query.length >= 2 && setIsOpen(true)}
-          className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           placeholder={placeholder}
+          className="w-full px-4 py-3 pl-12 text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          onFocus={() => query && setShowResults(true)}
         />
-        {query && (
-          <button
-            onClick={clearSearch}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-          >
-            <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-          </button>
+        <div className="absolute inset-y-0 left-0 flex items-center pl-4">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        {isLoading && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+          </div>
         )}
       </div>
-
-      {/* Resultados de búsqueda */}
-      {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-96 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
-          {results.map((result, index) => {
-            const { item, matches } = result;
-            const isSelected = index === selectedIndex;
-            
-            return (
-              <Link
-                key={item.frontMatter.code}
-                href={`/session/${item.frontMatter.code}`}
-                className={`block px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                  isSelected ? 'bg-blue-50' : ''
-                }`}
-                onClick={() => setIsOpen(false)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {item.frontMatter.code}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        Módulo {item.frontMatter.module}
-                      </span>
+      
+      {showResults && query && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          {results.length > 0 ? (
+            <div className="py-2">
+              {results.map((result, index) => (
+                <Link
+                  key={result.item.code}
+                  href={`/sesion/${result.item.code.toLowerCase()}`}
+                  className="block px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                  onClick={() => setShowResults(false)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          {result.item.code}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          Módulo {result.item.module}
+                        </span>
+                      </div>
+                      <h4 
+                        className="text-sm font-medium text-gray-900 leading-tight"
+                        dangerouslySetInnerHTML={{
+                          __html: highlightMatch(result.item.title, result.matches)
+                        }}
+                      />
+                      {result.item.bible.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {result.item.bible.slice(0, 3).map((ref, i) => (
+                            <span key={i} className="text-xs text-purple-600 bg-purple-50 px-1 py-0.5 rounded">
+                              {ref}
+                            </span>
+                          ))}
+                          {result.item.bible.length > 3 && (
+                            <span className="text-xs text-gray-500">+{result.item.bible.length - 3}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {highlightMatch(item.frontMatter.title, matches?.filter(m => m.key === 'frontMatter.title'))}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {highlightMatch(item.frontMatter.objective, matches?.filter(m => m.key === 'frontMatter.objective'))}
-                    </p>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                  <div className="text-xs text-gray-400 ml-2">
-                    {item.frontMatter.duration} min
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      {/* No hay resultados */}
-      {isOpen && query.length >= 2 && results.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-white shadow-lg rounded-md py-3 text-base ring-1 ring-black ring-opacity-5">
-          <div className="px-4 py-2 text-sm text-gray-500 text-center">
-            No se encontraron resultados para "{query}"
-          </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-gray-500 text-center text-sm">
+              {isLoading ? 'Buscando...' : 'No se encontraron resultados'}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
-}
-
-// Hook para búsqueda programática
-export function useSearch(sessions: SessionContent[]) {
-  const [fuse] = useState(() => new Fuse(sessions, {
-    keys: [
-      { name: 'frontMatter.title', weight: 0.3 },
-      { name: 'frontMatter.code', weight: 0.2 },
-      { name: 'frontMatter.objective', weight: 0.2 },
-      { name: 'content', weight: 0.15 },
-      { name: 'frontMatter.biblical_references', weight: 0.1 },
-      { name: 'frontMatter.key_terms', weight: 0.05 }
-    ],
-    threshold: 0.4,
-    includeScore: true,
-    includeMatches: true
-  }));
-
-  const search = (query: string, limit = 10) => {
-    if (query.trim().length < 2) return [];
-    return fuse.search(query, { limit });
-  };
-
-  return { search };
 }

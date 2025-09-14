@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken, getAppConfig } from '@/lib/auth';
 
 // Rutas que requieren autenticación
 const PROTECTED_ROUTES = ['/admin', '/api/admin'];
@@ -17,12 +16,6 @@ const PUBLIC_ROUTES = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const config = getAppConfig();
-  
-  // Si está en modo READ-only, redirigir /admin a la página principal
-  if (config.readOnly && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
   
   // Verificar si la ruta requiere autenticación
   const isProtectedRoute = PROTECTED_ROUTES.some(route => 
@@ -34,26 +27,47 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Obtener token de las cookies
-  const token = request.cookies.get('auth-token')?.value;
+  // Obtener cookie de autenticación
+  const authCookie = request.cookies.get('auth-session')?.value;
   
-  if (!token) {
-    // Redirigir a login si no hay token
+  if (!authCookie) {
+    // Redirigir a login si no hay cookie
+    if (pathname.startsWith('/api/admin')) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // Verificar token
-  const user = verifyToken(token);
-  
-  if (!user || user.role !== 'admin') {
-    // Token inválido o usuario no es admin
-    const response = NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.delete('auth-token');
-    return response;
+  try {
+    // Verificar que la cookie contenga role: admin
+    const session = JSON.parse(authCookie);
+    
+    if (session.role !== 'admin') {
+      // Redirigir si no es admin
+      if (pathname.startsWith('/api/admin')) {
+        return NextResponse.json(
+          { error: 'Acceso denegado' },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    
+    // Usuario autorizado, continuar
+    return NextResponse.next();
+  } catch (error) {
+    // Cookie malformada, redirigir a login
+    if (pathname.startsWith('/api/admin')) {
+      return NextResponse.json(
+        { error: 'Sesión inválida' },
+        { status: 401 }
+      );
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
   }
-  
-  // Usuario autenticado, permitir acceso
-  return NextResponse.next();
 }
 
 export const config = {

@@ -17,6 +17,11 @@
   break-after: page;
 }
 
+/* Clase para salto de página antes del elemento */
+.page-break-before {
+  break-before: page;
+}
+
 /* Estilos de impresión */
 @media print {
   * {
@@ -42,6 +47,44 @@
   @page {
     size: A4;
     margin: 20mm;
+  }
+
+  /* Evitar cortes en encabezados */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    break-inside: avoid;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Control de viudas y huérfanas */
+  .prose p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Tipografía optimizada para impresión */
+  body, .prose {
+    font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  /* Evitar cortes en listas */
+  ul, ol {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Evitar cortes en bloques importantes */
+  .evaluation, .materials, .commitment {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* Evitar saltos de página en elementos importantes */

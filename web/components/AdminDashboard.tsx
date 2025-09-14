@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SessionContent } from '@/types';
+import { SessionSummary } from '@/lib/content-loader';
 import { 
   Edit, 
   Eye, 
@@ -10,12 +10,14 @@ import {
   XCircle, 
   Archive,
   LogOut,
-  Filter
+  Filter,
+  Settings
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import PasswordChangeForm from './PasswordChangeForm';
 
 interface AdminDashboardProps {
-  sessions: SessionContent[];
+  sessions: SessionSummary[];
   auditStats: {
     totalActions: number;
     actionsByType: Record<string, number>;
@@ -28,11 +30,12 @@ type FilterStatus = 'all' | 'draft' | 'published' | 'archived';
 export default function AdminDashboard({ sessions, auditStats }: AdminDashboardProps) {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [loading, setLoading] = useState<string | null>(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const router = useRouter();
 
   // Filtrar sesiones según el estado seleccionado
   const filteredSessions = sessions.filter(session => {
-    const status = session.frontMatter?.status || 'draft';
+    const status = session.status || 'draft';
     if (filter === 'all') return true;
     return status === filter;
   });
@@ -128,13 +131,22 @@ export default function AdminDashboard({ sessions, auditStats }: AdminDashboardP
             </span>
           </div>
           
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Cerrar Sesión
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowPasswordForm(!showPasswordForm)}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Cambiar Contraseña
+            </button>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
       </div>
 
@@ -168,7 +180,7 @@ export default function AdminDashboard({ sessions, auditStats }: AdminDashboardP
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredSessions.map((session) => {
-              const status = session.frontMatter?.status || 'draft';
+              const status = session.status || 'draft';
               const isPublished = status === 'published';
               
               return (
@@ -178,20 +190,20 @@ export default function AdminDashboard({ sessions, auditStats }: AdminDashboardP
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="max-w-xs truncate">
-                      {session.frontMatter?.title || 'Sin título'}
+                      {session.title || 'Sin título'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    v{session.frontMatter?.version || 1}
+                    v{session.version || 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(session.frontMatter?.editedAt)}
+                    {formatDate(session.updated)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(session.frontMatter?.publishedAt)}
+                    {formatDate(session.publishedAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
@@ -271,6 +283,17 @@ export default function AdminDashboard({ sessions, auditStats }: AdminDashboardP
       {filteredSessions.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No hay sesiones que coincidan con el filtro seleccionado.</p>
+        </div>
+      )}
+      
+      {/* Formulario de cambio de contraseña */}
+      {showPasswordForm && (
+        <div className="px-6 py-4 border-t border-gray-200">
+          <PasswordChangeForm 
+            onSuccess={() => {
+              setShowPasswordForm(false);
+            }}
+          />
         </div>
       )}
     </div>

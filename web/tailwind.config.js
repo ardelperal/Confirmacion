@@ -32,7 +32,7 @@ module.exports = {
       }
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/typography')],
   screens: {
     'print': {'raw': 'print'},
   }

@@ -1,25 +1,25 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getModule, getAllModules } from '@/lib/content-loader';
 import SessionView from '@/components/SessionView';
-import Breadcrumbs, { getModuleBreadcrumbs } from '@/components/Breadcrumbs';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import DownloadButtons from '@/components/DownloadButtons';
-import { SessionPreview } from '@/components/SessionView';
 
 interface ModulePageProps {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 /**
  * Página para mostrar un módulo completo con todas sus sesiones
  */
 export default async function ModulePage({ params }: ModulePageProps) {
-  const { code } = params;
+  const { code } = await params;
   const moduleCode = code.toUpperCase();
   
-  // Cargar el módulo completo
-  const module = await getModule(moduleCode);
+  // Cargar el módulo completo (solo sesiones publicadas)
+  const module = await getModule(moduleCode, { visibility: 'public' });
   
   if (!module) {
     notFound();
@@ -30,7 +30,11 @@ export default async function ModulePage({ params }: ModulePageProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Breadcrumbs */}
-      <Breadcrumbs items={getModuleBreadcrumbs(info.code, info.title)} />
+      <Breadcrumbs items={[
+        { label: 'Inicio', href: '/' },
+        { label: 'Módulos', href: '/modules' },
+        { label: `Módulo ${info.code}`, href: `/module/${info.code}` }
+      ]} />
       
       {/* Header del módulo */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-lg mb-6 print:shadow-none print:border-0">
@@ -49,8 +53,7 @@ export default async function ModulePage({ params }: ModulePageProps) {
             </div>
             <div className="print:hidden">
               <DownloadButtons 
-                sessions={sessions}
-                title={`Módulo ${info.code}`}
+                code={info.code}
               />
             </div>
           </div>
@@ -63,7 +66,7 @@ export default async function ModulePage({ params }: ModulePageProps) {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessions.map((session) => (
             <div key={session.frontMatter.code}>
-              <SessionPreview session={session} />
+              <SessionView session={session} />
             </div>
           ))}
         </div>
@@ -75,9 +78,6 @@ export default async function ModulePage({ params }: ModulePageProps) {
           <div key={session.frontMatter.code} className={index > 0 ? 'page-break-before' : ''}>
             <SessionView 
               session={session}
-              moduleTitle={info.title}
-              showBreadcrumbs={false}
-              showDownloadButtons={false}
             />
           </div>
         ))}
@@ -164,7 +164,7 @@ export async function generateStaticParams() {
  * Metadatos dinámicos para SEO
  */
 export async function generateMetadata({ params }: ModulePageProps) {
-  const { code } = params;
+  const { code } = await params;
   const module = await getModule(code.toUpperCase());
   
   if (!module) {

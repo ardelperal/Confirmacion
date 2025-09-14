@@ -10,8 +10,10 @@ const SESSIONS_DIR = path.join(process.cwd(), 'content', 'sessions');
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { code: string; action: string } }
+  { params }: { params: Promise<{ code: string; action: string }> }
 ) {
+  const { code, action } = await params;
+  
   try {
     // Verificar autenticación
     const userIsAdmin = await isAdmin();
@@ -21,8 +23,6 @@ export async function POST(
         { status: 401 }
       );
     }
-
-    const { code, action } = params;
     const sessionPath = path.join(SESSIONS_DIR, `${code}.md`);
 
     // Verificar que el archivo existe
@@ -91,14 +91,12 @@ export async function POST(
         );
     }
 
-    // Guardar archivo actualizado (para acciones que no sean delete)
-    if (action !== 'delete') {
-      const updatedContent = matter.stringify(content, updatedFrontMatter);
-      await fs.writeFile(sessionPath, updatedContent, 'utf-8');
-      
-      // Registrar en auditoría
-      await logAuditAction('parroco', auditAction, code, updatedFrontMatter.version);
-    }
+    // Guardar archivo actualizado
+    const updatedContent = matter.stringify(content, updatedFrontMatter);
+    await fs.writeFile(sessionPath, updatedContent, 'utf-8');
+    
+    // Registrar en auditoría
+    await logAuditAction('parroco', auditAction, code, updatedFrontMatter.version);
 
     return NextResponse.json({
       success: true,
@@ -110,7 +108,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error(`Error en acción ${params.action} para sesión ${params.code}:`, error);
+    console.error(`Error en acción ${action} para sesión ${code}:`, error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

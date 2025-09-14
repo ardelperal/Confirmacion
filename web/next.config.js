@@ -3,9 +3,11 @@ const nextConfig = {
   // Habilitar salida standalone para Docker
   output: 'standalone',
   
+  // Paquetes externos para componentes del servidor
+  serverExternalPackages: ['playwright'],
+  
   // Configuración experimental
   experimental: {
-    serverComponentsExternalPackages: ['playwright'],
     // Optimizaciones para producción
     optimizeCss: true,
   },

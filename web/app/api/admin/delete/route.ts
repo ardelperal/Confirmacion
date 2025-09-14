@@ -1,0 +1,98 @@
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import matter from 'gray-matter';
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { code } = await request.json();
+    
+    // Validar código
+    if (!code || !code.match(/^[A-F][1-6]$/)) {
+      return NextResponse.json(
+        { error: 'Código inválido' },
+        { status: 400 }
+      );
+    }
+
+    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
+    const filePath = path.join(sessionsDir, `${code}.md`);
+    
+    // Verificar que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json(
+        { error: 'Sesión no encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Leer el archivo para obtener la versión actual
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const { data: frontMatter } = matter(fileContent);
+    const version = frontMatter.version || 1;
+
+    // Crear directorio de papelera si no existe
+    const trashDir = path.join(process.cwd(), 'content', '.trash');
+    if (!fs.existsSync(trashDir)) {
+      fs.mkdirSync(trashDir, { recursive: true });
+    }
+
+    // Generar nombre único para el archivo en papelera
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const trashFileName = `${code}-${timestamp}.md`;
+    const trashFilePath = path.join(trashDir, trashFileName);
+
+    // Mover archivo a papelera
+    fs.copyFileSync(filePath, trashFilePath);
+    fs.unlinkSync(filePath);
+
+    // Registrar en auditoría
+    const now = new Date().toISOString();
+    await logAudit({
+      ts: now,
+      user: 'parroco',
+      action: 'delete',
+      code,
+      version,
+      trashFile: trashFileName
+    });
+
+    return NextResponse.json({ 
+      ok: true, 
+      message: 'Sesión eliminada exitosamente',
+      trashFile: trashFileName
+    });
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
+  }
+}
+
+async function logAudit(entry: {
+  ts: string;
+  user: string;
+  action: string;
+  code: string;
+  version: number;
+  trashFile?: string;
+}) {
+  try {
+    const contentDir = path.join(process.cwd(), 'content');
+    const auditPath = path.join(contentDir, '.audit.log');
+    
+    // Crear directorio si no existe
+    if (!fs.existsSync(contentDir)) {
+      fs.mkdirSync(contentDir, { recursive: true });
+    }
+
+    // Agregar entrada al log (formato JSONL)
+    const logLine = JSON.stringify(entry) + '\n';
+    fs.appendFileSync(auditPath, logLine, 'utf8');
+  } catch (error) {
+    console.error('Error logging audit:', error);
+    // No fallar la operación principal por errores de auditoría
+  }
+}

@@ -1,47 +1,19 @@
 import matter from 'gray-matter';
-import { marked } from 'marked';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import rehypeRaw from 'rehype-raw';
+import rehypeStringify from 'rehype-stringify';
 import { ParsedMarkdown } from '@/types';
 
 /**
- * Configuración personalizada de marked para el contenido de catequesis
+ * Procesador unificado para convertir markdown a HTML
  */
-function configureMarked() {
-  const renderer = new marked.Renderer();
-  
-  // Personalizar el renderizado de encabezados
-  renderer.heading = (text: string, level: number) => {
-    const escapedText = text.toLowerCase().replace(/[^\w]+/g, '-');
-    return `<h${level} id="${escapedText}" class="session-heading session-heading-${level}">${text}</h${level}>\n`;
-  };
-  
-  // Personalizar el renderizado de párrafos
-  renderer.paragraph = (text: string) => {
-    return `<p class="session-paragraph">${text}</p>\n`;
-  };
-  
-  // Personalizar el renderizado de listas
-  renderer.list = (body: string, ordered: boolean) => {
-    const type = ordered ? 'ol' : 'ul';
-    const className = ordered ? 'session-list-ordered' : 'session-list-unordered';
-    return `<${type} class="${className}">${body}</${type}>\n`;
-  };
-  
-  renderer.listitem = (text: string) => {
-    return `<li class="session-list-item">${text}</li>\n`;
-  };
-  
-  // Personalizar el renderizado de bloques de código
-  renderer.blockquote = (quote: string) => {
-    return `<blockquote class="session-quote">${quote}</blockquote>\n`;
-  };
-  
-  marked.setOptions({
-    renderer,
-    gfm: true,
-    breaks: true,
-    sanitize: false
-  });
-}
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkRehype, { allowDangerousHtml: true })
+  .use(rehypeRaw)
+  .use(rehypeStringify);
 
 /**
  * Convierte los marcadores ---pagebreak--- en divs con clase pagebreak
@@ -49,33 +21,46 @@ function configureMarked() {
  * @returns Contenido con pagebreaks convertidos
  */
 export function convertPagebreaks(content: string): string {
-  return content.replace(/^---pagebreak---$/gm, '<div class="pagebreak"></div>');
+  return content.replace(/---pagebreak---/g, '<div class="pagebreak"></div>');
 }
 
 /**
- * Procesa el contenido markdown después de la conversión a HTML
- * @param html HTML generado por marked
- * @returns HTML procesado con clases adicionales
+ * Post-procesa el HTML para agregar clases CSS específicas
+ * @param html HTML generado
+ * @returns HTML con clases CSS agregadas
  */
 function postProcessHtml(html: string): string {
+  let processed = html;
+  
+  // Agregar clases CSS para impresión y estilo
+  processed = processed.replace(/<h1>/g, '<h1 class="session-title">');
+  processed = processed.replace(/<h2>/g, '<h2 class="session-section">');
+  processed = processed.replace(/<h3>/g, '<h3 class="session-subsection">');
+  processed = processed.replace(/<p>/g, '<p class="session-text">');
+  processed = processed.replace(/<ul>/g, '<ul class="session-list">');
+  processed = processed.replace(/<ol>/g, '<ol class="session-list session-list-ordered">');
+  processed = processed.replace(/<li>/g, '<li class="session-list-item">');
+  processed = processed.replace(/<blockquote>/g, '<blockquote class="session-quote">');
+  processed = processed.replace(/<table>/g, '<table class="session-table">');
+  
   // Agregar clases a elementos específicos de sesiones
-  html = html.replace(/<h3>OBJETIVO<\/h3>/g, '<h3 class="session-objective-title">OBJETIVO</h3>');
-  html = html.replace(/<h3>MATERIALES<\/h3>/g, '<h3 class="session-materials-title">MATERIALES</h3>');
-  html = html.replace(/<h3>ESQUEMA<\/h3>/g, '<h3 class="session-schema-title">ESQUEMA</h3>');
-  html = html.replace(/<h3>EVALUACIÓN RÁPIDA<\/h3>/g, '<h3 class="session-evaluation-title">EVALUACIÓN RÁPIDA</h3>');
-  html = html.replace(/<h3>PARA CASA<\/h3>/g, '<h3 class="session-homework-title">PARA CASA</h3>');
-  html = html.replace(/<h3>NOTAS AL CATEQUISTA<\/h3>/g, '<h3 class="session-notes-title">NOTAS AL CATEQUISTA</h3>');
+  processed = processed.replace(/<h3 class="session-subsection">OBJETIVO<\/h3>/g, '<h3 class="session-objective-title">OBJETIVO</h3>');
+  processed = processed.replace(/<h3 class="session-subsection">MATERIALES<\/h3>/g, '<h3 class="session-materials-title">MATERIALES</h3>');
+  processed = processed.replace(/<h3 class="session-subsection">ESQUEMA<\/h3>/g, '<h3 class="session-schema-title">ESQUEMA</h3>');
+  processed = processed.replace(/<h3 class="session-subsection">EVALUACIÓN RÁPIDA<\/h3>/g, '<h3 class="session-evaluation-title">EVALUACIÓN RÁPIDA</h3>');
+  processed = processed.replace(/<h3 class="session-subsection">PARA CASA<\/h3>/g, '<h3 class="session-homework-title">PARA CASA</h3>');
+  processed = processed.replace(/<h3 class="session-subsection">NOTAS AL CATEQUISTA<\/h3>/g, '<h3 class="session-notes-title">NOTAS AL CATEQUISTA</h3>');
   
   // Agregar clases a bloques de tiempo
-  html = html.replace(/([0-9]+)\s*min/g, '<span class="time-indicator">$1 min</span>');
+  processed = processed.replace(/([0-9]+)\s*min/g, '<span class="time-indicator">$1 min</span>');
   
   // Agregar clases a referencias bíblicas (formato: (Ref 1:1))
-  html = html.replace(/\(([A-Za-z0-9\s]+\s[0-9]+:[0-9]+[^)]*?)\)/g, '<span class="biblical-reference">($1)</span>');
+  processed = processed.replace(/\(([A-Za-z0-9\s]+\s[0-9]+:[0-9]+[^)]*?)\)/g, '<span class="biblical-reference">($1)</span>');
   
   // Agregar clases a referencias del Catecismo (formato: (CIC 123))
-  html = html.replace(/\(CIC\s([0-9]+(?:-[0-9]+)?)\)/g, '<span class="catechism-reference">(CIC $1)</span>');
+  processed = processed.replace(/\(CIC\s([0-9]+(?:-[0-9]+)?)\)/g, '<span class="catechism-reference">(CIC $1)</span>');
   
-  return html;
+  return processed;
 }
 
 /**
@@ -83,21 +68,19 @@ function postProcessHtml(html: string): string {
  * @param fileContent Contenido completo del archivo markdown
  * @returns Objeto con front-matter y contenido parseado
  */
-export function parseMarkdown(fileContent: string): ParsedMarkdown {
-  // Configurar marked si no se ha hecho
-  configureMarked();
-  
-  // Parsear front-matter
+export async function parseMarkdown(fileContent: string): Promise<ParsedMarkdown> {
+  // Parsear front matter
   const { data: frontMatter, content } = matter(fileContent);
   
-  // Convertir pagebreaks
+  // Convertir pagebreaks antes del procesamiento
   const contentWithPagebreaks = convertPagebreaks(content);
   
-  // Convertir markdown a HTML
-  let htmlContent = marked(contentWithPagebreaks) as string;
+  // Convertir markdown a HTML usando remark/rehype
+  const result = await processor.process(contentWithPagebreaks);
+  const rawHtml = String(result);
   
   // Post-procesar HTML
-  htmlContent = postProcessHtml(htmlContent);
+  const htmlContent = postProcessHtml(rawHtml);
   
   return {
     frontMatter,
@@ -112,7 +95,7 @@ export function parseMarkdown(fileContent: string): ParsedMarkdown {
  * @returns true si es válido, false en caso contrario
  */
 export function validateSessionFrontMatter(frontMatter: any): boolean {
-  const requiredFields = ['code', 'title', 'module', 'duration', 'objective'];
+  const requiredFields = ['code', 'title', 'module', 'duration'];
   return requiredFields.every(field => frontMatter.hasOwnProperty(field) && frontMatter[field]);
 }
 

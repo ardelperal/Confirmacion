@@ -139,3 +139,26 @@ audit-logs/
 
 # Turbo
 .turbo
+
+# Test files and temporary documents
+test_*.pdf
+test_*.docx
+test_*.doc
+*.tmp
+Lote_*.md
+
+# IDE and development tools
+.trae/
+cookies.txt
+
+# Backup directories
+test_backup/
+backups/
+
+# Development and debug files
+DEPRECATION_WARNINGS.md
+Playbook_*.md
+
+# Runtime authentication (keep template only)
+parish-auth.json
+!parish-auth.json.example
