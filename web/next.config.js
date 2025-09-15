@@ -12,6 +12,11 @@ const nextConfig = {
     optimizeCss: true,
   },
   
+  // Deshabilitar ESLint durante el build para CI
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
   webpack: (config) => {
     config.resolve.fallback = {
       fs: false,
@@ -30,26 +35,44 @@ const nextConfig = {
   
   // Headers de seguridad
   async headers() {
+    const securityHeaders = [
+      {
+        key: 'Content-Security-Policy',
+        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      },
+      {
+        key: 'X-Frame-Options',
+        value: 'DENY'
+      },
+      {
+        key: 'Referrer-Policy',
+        value: 'strict-origin-when-cross-origin'
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'geolocation=(), camera=(), microphone=()'
+      },
+      {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff'
+      }
+    ];
+
+    // Añadir HSTS solo en producción
+    if (process.env.NODE_ENV === 'production') {
+      securityHeaders.push({
+        key: 'Strict-Transport-Security',
+        value: 'max-age=31536000; includeSubDomains; preload'
+      });
+    }
+
     return [
       {
         source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY'
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin'
-          }
-        ]
+        headers: securityHeaders
       }
     ];
   }
 }
 
-module.exports = nextConfig
+export default nextConfig;

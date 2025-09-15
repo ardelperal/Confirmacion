@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { extractTokenFromCookies, verifyAccessToken } from '@/lib/jwt';
 
 // Rutas que requieren autenticación
 const PROTECTED_ROUTES = ['/admin', '/api/admin'];
@@ -11,7 +12,9 @@ const PUBLIC_ROUTES = [
   '/sesion',
   '/api/export',
   '/api/index.json',
-  '/login'
+  '/login',
+  '/api/auth/login',
+  '/api/auth/refresh'
 ];
 
 export function middleware(request: NextRequest) {
@@ -27,47 +30,53 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Obtener cookie de autenticación
-  const authCookie = request.cookies.get('auth-session')?.value;
+  // Extraer JWT token de cookies seguras
+  const cookieHeader = request.headers.get('cookie');
+  const token = extractTokenFromCookies(cookieHeader);
   
-  if (!authCookie) {
-    // Redirigir a login si no hay cookie
+  if (!token) {
+    // Redirigir a login si no hay token
     if (pathname.startsWith('/api/admin')) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: 'No autorizado - Token requerido' },
         { status: 401 }
       );
     }
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  try {
-    // Verificar que la cookie contenga role: admin
-    const session = JSON.parse(authCookie);
-    
-    if (session.role !== 'admin') {
-      // Redirigir si no es admin
-      if (pathname.startsWith('/api/admin')) {
-        return NextResponse.json(
-          { error: 'Acceso denegado' },
-          { status: 403 }
-        );
-      }
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    
-    // Usuario autorizado, continuar
-    return NextResponse.next();
-  } catch (error) {
-    // Cookie malformada, redirigir a login
+  // Verificar JWT token con endurecimiento
+  const verificationResult = verifyAccessToken(token);
+  
+  if (!verificationResult.payload || verificationResult.error) {
+    // Token inválido o expirado
     if (pathname.startsWith('/api/admin')) {
       return NextResponse.json(
-        { error: 'Sesión inválida' },
+        { error: verificationResult.error || 'Token inválido' },
         { status: 401 }
       );
     }
     return NextResponse.redirect(new URL('/login', request.url));
   }
+  
+  // Verificar rol de admin
+  if (verificationResult.payload.role !== 'admin') {
+    if (pathname.startsWith('/api/admin')) {
+      return NextResponse.json(
+        { error: 'Acceso denegado - Se requiere rol admin' },
+        { status: 403 }
+      );
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+  
+  // Si el token necesita refresh (cerca de expirar), agregar header
+  const response = NextResponse.next();
+  if (verificationResult.needsRefresh) {
+    response.headers.set('X-Token-Refresh-Needed', 'true');
+  }
+  
+  return response;
 }
 
 export const config = {

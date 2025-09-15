@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/content-loader';
 import { verifyAdminAuth } from '@/lib/auth';
-import fs from 'fs';
-import path from 'path';
+import { readContentFile } from '@/lib/fsSafe';
+import { assertValidSlug } from '@/lib/slug';
 
 interface RouteParams {
   params: Promise<{
@@ -23,8 +23,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { code } = await params;
 
-    // Validar formato del código
-    if (!code || !/^[A-F][1-6]$/i.test(code)) {
+    // Validar slug del código
+    try {
+      assertValidSlug(code.toLowerCase());
+    } catch (error) {
       return NextResponse.json(
         { error: 'Código de sesión inválido' },
         { status: 400 }
@@ -41,13 +43,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Obtener el contenido raw del archivo
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
-    const filePath = path.join(sessionsDir, `${code.toLowerCase()}.md`);
+    // Obtener el contenido raw del archivo usando helper seguro
+    const filePath = `sessions/${code.toLowerCase()}.md`;
     
     let rawContent = '';
     try {
-      rawContent = fs.readFileSync(filePath, 'utf-8');
+      rawContent = await readContentFile(filePath);
     } catch (error) {
       console.error('Error reading raw file:', error);
     }

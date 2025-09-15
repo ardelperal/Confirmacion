@@ -20,8 +20,16 @@ export function DownloadButtons({
         const cookies = document.cookie.split(';');
         const authCookie = cookies.find(c => c.trim().startsWith('auth-session='));
         if (authCookie) {
-          const sessionData = JSON.parse(decodeURIComponent(authCookie.split('=')[1]));
-          setIsAdmin(sessionData.role === 'admin');
+          const cookieValue = authCookie.split('=')[1];
+          if (cookieValue && cookieValue.trim()) {
+            try {
+              const sessionData = JSON.parse(decodeURIComponent(cookieValue));
+              setIsAdmin(sessionData.role === 'admin');
+            } catch (parseError) {
+              console.warn('Error parsing auth cookie:', parseError);
+              setIsAdmin(false);
+            }
+          }
         }
       } catch (error) {
         console.error('Error checking admin status:', error);

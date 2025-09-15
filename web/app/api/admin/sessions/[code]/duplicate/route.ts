@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { verifyAdminAuth } from '@/lib/auth';
 import { getSession } from '@/lib/content-loader';
-import fs from 'fs';
-import path from 'path';
+import { writeContentFile } from '@/lib/fsSafe';
+import { assertValidSlug } from '@/lib/slug';
 
 interface DuplicateRequestBody {
   newCode: string;
@@ -16,13 +15,21 @@ interface DuplicateRequestBody {
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   try {
-    // Verificar autenticación
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    // Verificar autenticación de admin
+    const authResult = await verifyAdminAuth(request);
+    if (!authResult.success) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const { code } = await params;
+    
+    // Validar slug del código original
+    try {
+      assertValidSlug(code.toLowerCase());
+    } catch (error) {
+      return NextResponse.json({ error: 'Código de sesión inválido' }, { status: 400 });
+    }
+    
     const sessionCode = code.toUpperCase();
     
     // Obtener datos del cuerpo de la petición
@@ -31,6 +38,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     
     if (!newCode) {
       return NextResponse.json({ error: 'Código de nueva sesión requerido' }, { status: 400 });
+    }
+
+    // Validar slug del nuevo código
+    try {
+      assertValidSlug(newCode.toLowerCase());
+    } catch (error) {
+      return NextResponse.json({ error: 'Nuevo código de sesión inválido' }, { status: 400 });
     }
 
     const newSessionCode = newCode.toUpperCase();
@@ -87,11 +101,10 @@ editedAt: "${newFrontMatter.editedAt}"
 
     const fullContent = yamlFrontMatter + originalSession.content;
 
-    // Guardar el archivo
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
-    const newFilePath = path.join(sessionsDir, `${newSessionCode}.md`);
+    // Guardar el archivo usando helper seguro
+    const newFilePath = `sessions/${newSessionCode}.md`;
     
-    await fs.promises.writeFile(newFilePath, fullContent, 'utf8');
+    await writeContentFile(newFilePath, fullContent);
 
     return NextResponse.json({
       success: true,

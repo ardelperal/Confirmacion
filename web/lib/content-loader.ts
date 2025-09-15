@@ -1,6 +1,7 @@
-import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { readContentFile, listContentFiles, contentFileExists } from './fsSafe';
+import { assertValidSlug } from './slug';
 import { 
   SessionContent, 
   ModuleContent, 
@@ -34,9 +35,9 @@ export interface VisibilityOptions {
   visibility: 'public' | 'admin';
 }
 
-const CONTENT_DIR = path.join(process.cwd(), '..', 'data', 'content');
-const SESSIONS_DIR = path.join(CONTENT_DIR, 'sessions');
-const MODULES_CONFIG = path.join(CONTENT_DIR, 'modules.yml');
+// Rutas relativas desde data/content
+const SESSIONS_SUBDIR = 'sessions';
+const MODULES_CONFIG_FILE = 'modules.yml';
 
 /**
  * Cache para mejorar el rendimiento
@@ -80,7 +81,7 @@ export async function loadModulesConfig(): Promise<CourseConfig> {
   if (cached) return cached;
 
   try {
-    const configContent = fs.readFileSync(MODULES_CONFIG, 'utf-8');
+    const configContent = await readContentFile(MODULES_CONFIG_FILE);
     const config = yaml.load(configContent) as CourseConfig;
     
     setCache(cacheKey, config);
@@ -108,16 +109,8 @@ function isSessionVisible(session: SessionContent, visibility: 'public' | 'admin
     return true;
   }
   
-  const visibilityMode = getVisibilityMode();
-  
-  // Para vista pública, verificar estado editorial según el modo de visibilidad
-  if (visibilityMode === 'publish') {
-    return session.frontMatter.status === 'published';
-  } else if (visibilityMode === 'edited') {
-    return session.frontMatter.editedBy != null;
-  }
-  
-  // Por defecto, mostrar solo publicadas
+  // SEGURIDAD: El modo público SIEMPRE debe mostrar solo contenido published
+  // No importa el visibilityMode configurado, nunca exponer contenido edited públicamente
   return session.frontMatter.status === 'published';
 }
 
@@ -128,6 +121,14 @@ function isSessionVisible(session: SessionContent, visibility: 'public' | 'admin
  * @returns Contenido de la sesión o null si no existe
  */
 export async function getSession(sessionCode: string, options: VisibilityOptions = { visibility: 'public' }): Promise<SessionContent | null> {
+  // Validar slug del código de sesión
+  try {
+    assertValidSlug(sessionCode.toLowerCase());
+  } catch (error) {
+    console.warn(`Código de sesión inválido: ${sessionCode}`);
+    return null;
+  }
+
   const normalizedCode = sessionCode.toUpperCase();
   const cacheKey = `session-${normalizedCode}`;
   
@@ -135,7 +136,7 @@ export async function getSession(sessionCode: string, options: VisibilityOptions
   if (cached && options.visibility === 'public') return cached;
 
   try {
-    // Buscar archivo de sesión
+    // Buscar archivo de sesión usando helpers seguros
     const possibleFilenames = [
       `${normalizedCode}.md`,
       `session-${normalizedCode}.md`,
@@ -143,22 +144,22 @@ export async function getSession(sessionCode: string, options: VisibilityOptions
       `session-${normalizedCode.toLowerCase()}.md`
     ];
 
-    let sessionFile: string | null = null;
+    let sessionFilePath: string | null = null;
     for (const filename of possibleFilenames) {
-      const filePath = path.join(SESSIONS_DIR, filename);
-      if (fs.existsSync(filePath)) {
-        sessionFile = filePath;
+      const filePath = path.join(SESSIONS_SUBDIR, filename);
+      if (await contentFileExists(filePath)) {
+        sessionFilePath = filePath;
         break;
       }
     }
 
-    if (!sessionFile) {
+    if (!sessionFilePath) {
       console.warn(`Sesión ${normalizedCode} no encontrada`);
       return null;
     }
 
-    // Leer y parsear el archivo
-    const fileContent = fs.readFileSync(sessionFile, 'utf-8');
+    // Leer y parsear el archivo usando helper seguro
+    const fileContent = await readContentFile(sessionFilePath);
     const parsed = await parseMarkdown(fileContent);
 
     // Validar front-matter
@@ -197,6 +198,14 @@ export async function getSession(sessionCode: string, options: VisibilityOptions
  * @returns Contenido completo del módulo con todas sus sesiones
  */
 export async function getModule(moduleCode: string, options: VisibilityOptions = { visibility: 'public' }): Promise<ModuleContent | null> {
+  // Validar slug del código de módulo
+  try {
+    assertValidSlug(moduleCode.toLowerCase());
+  } catch (error) {
+    console.warn(`Código de módulo inválido: ${moduleCode}`);
+    return null;
+  }
+
   const normalizedCode = moduleCode.toUpperCase();
   const cacheKey = `module-${normalizedCode}-${options.visibility}`;
   
@@ -247,16 +256,16 @@ export async function getAllSessions(options: VisibilityOptions = { visibility: 
   if (cached) return cached;
 
   try {
-    if (!fs.existsSync(SESSIONS_DIR)) {
-      return [];
-    }
+    // Listar archivos usando helper seguro
+    const files = await listContentFiles(SESSIONS_SUBDIR)
+      .then(files => files.filter(file => file.endsWith('.md')))
+      .catch(() => []); // Si no existe el directorio, devolver array vacío
 
-    const files = fs.readdirSync(SESSIONS_DIR)
-      .filter(file => file.endsWith('.md'))
+    const sessionCodes = files
       .map(file => extractSessionCode(file))
       .filter(code => code !== null) as string[];
 
-    const uniqueCodes = Array.from(new Set(files)).sort();
+    const uniqueCodes = Array.from(new Set(sessionCodes)).sort();
     const sessions: SessionSummary[] = [];
     
     for (const code of uniqueCodes) {

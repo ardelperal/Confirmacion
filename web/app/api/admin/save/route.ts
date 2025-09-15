@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { checkAdminRateLimit } from '@/lib/adminRateLimit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Verificar rate limiting
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+    
     const { code, markdown } = await request.json();
     
     // Validar código

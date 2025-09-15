@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import matter from 'gray-matter';
+import { readContentFile, contentFileExists } from '@/lib/fsSafe';
+import { assertValidSlug } from '@/lib/slug';
 
 export async function GET(
   request: NextRequest,
@@ -10,27 +10,28 @@ export async function GET(
   try {
     const { code } = await params;
     
-    // Validar formato del código
-    if (!code.match(/^[A-F][1-6]$/)) {
+    // Validar slug del código
+    try {
+      assertValidSlug(code.toLowerCase());
+    } catch (error) {
       return NextResponse.json(
         { error: 'Código inválido' },
         { status: 400 }
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
-    const filePath = path.join(sessionsDir, `${code}.md`);
+    const filePath = `sessions/${code}.md`;
 
-    // Verificar si el archivo existe
-    if (!fs.existsSync(filePath)) {
+    // Verificar si el archivo existe usando helper seguro
+    if (!(await contentFileExists(filePath))) {
       return NextResponse.json(
         { error: 'Sesión no encontrada' },
         { status: 404 }
       );
     }
 
-    // Leer y parsear el archivo
-    const fileContent = fs.readFileSync(filePath, 'utf8');
+    // Leer y parsear el archivo usando helper seguro
+    const fileContent = await readContentFile(filePath);
     const { data: frontMatter, content } = matter(fileContent);
 
     const session = {

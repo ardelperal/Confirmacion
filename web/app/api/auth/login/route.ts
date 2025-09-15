@@ -1,13 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyAdminPassword } from '@/lib/auth';
+import { verifyAdminPassword, generateToken } from '@/lib/auth';
+import { createSecureCookieHeader } from '@/lib/jwt';
 import { logAuthAttempt } from '@/lib/logging-middleware';
 import { createLogContext } from '@/lib/logger';
+import { initRateLimiter, RATE_LIMIT_CONFIGS, createRateLimitResponse } from '@/lib/rateLimit';
+
+// Inicializar rate limiter para login
+const loginRateLimiter = initRateLimiter(RATE_LIMIT_CONFIGS.LOGIN);
 
 export async function POST(request: NextRequest) {
   const logContext = createLogContext(request);
   
   try {
+    // Verificar rate limiting
+    const rateLimitResult = await loginRateLimiter.check(request);
+    
+    if (!rateLimitResult.allowed) {
+      // Crear respuesta 429 con headers apropiados
+      const response = createRateLimitResponse(
+        rateLimitResult,
+        'Demasiados intentos de login. Intenta de nuevo más tarde.'
+      );
+      
+      // Establecer el límite correcto en el header
+      response.headers.set('X-RateLimit-Limit', RATE_LIMIT_CONFIGS.LOGIN.max.toString());
+      
+      return response;
+    }
+    
     const { password } = await request.json();
 
     // Verificar contraseña usando el sistema dual de autenticación
@@ -33,20 +53,27 @@ export async function POST(request: NextRequest) {
       username: 'admin'
     });
 
-    // Crear respuesta exitosa
-    const response = NextResponse.json({ success: true });
-
-    // Establecer cookie httpOnly con rol admin
-    const cookieStore = await cookies();
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Generar JWT token con configuración endurecida
+    const user = {
+      id: 'admin',
+      username: 'admin',
+      role: 'admin' as const
+    };
     
-    response.cookies.set('auth-session', JSON.stringify({ role: 'admin' }), {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 días
-      path: '/'
+    const token = generateToken(user);
+    
+    // Crear respuesta exitosa
+    const response = NextResponse.json({ 
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
     });
+
+    // Establecer cookie segura con JWT endurecido (15 minutos)
+    response.headers.set('Set-Cookie', createSecureCookieHeader(token, 900));
 
     return response;
   } catch (error: any) {

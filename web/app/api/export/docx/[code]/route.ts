@@ -26,9 +26,14 @@ export async function GET(
       try {
         const cookieStore = await cookies();
         const authCookie = cookieStore.get('auth-session');
-        if (authCookie) {
-          const session = JSON.parse(authCookie.value);
-          isAdmin = session.role === 'admin';
+        if (authCookie && authCookie.value && authCookie.value.trim()) {
+          try {
+            const session = JSON.parse(authCookie.value);
+            isAdmin = session.role === 'admin';
+          } catch (parseError) {
+            console.warn('Error parsing auth cookie:', parseError);
+            isAdmin = false;
+          }
         }
       } catch (error) {
         console.error('Error checking admin status:', error);

@@ -1,5 +1,7 @@
 # Sistema de Catequesis para Confirmación
 
+[![CI & Security](https://github.com/${{github.repository}}/actions/workflows/ci-security.yml/badge.svg)](../../actions/workflows/ci-security.yml)
+
 Sistema web para gestión de sesiones de catequesis dirigidas a jóvenes de 12-13 años en preparación para el sacramento de la Confirmación.
 
 ## 🚀 Despliegue en NAS

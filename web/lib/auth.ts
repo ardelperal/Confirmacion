@@ -1,13 +1,28 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 import { cookies } from 'next/headers';
 import { AuthUser, AppConfig } from '@/types';
 import { verifyParishPassword } from './parish-auth';
+import { 
+  signAccessToken, 
+  verifyAccessToken, 
+  extractTokenFromCookies,
+  createSecureCookieHeader,
+  createClearCookieHeader,
+  type JWTPayload 
+} from './jwt';
 
 // Configuración desde variables de entorno
 export function getAppConfig(): AppConfig {
+  // Validar que ADMIN_PASSWORD_HASH existe
+  if (!process.env.ADMIN_PASSWORD_HASH) {
+    throw new Error(
+      'ADMIN_PASSWORD_HASH no está configurado. ' +
+      'Genera un hash con: npm run hash:admin'
+    );
+  }
+
   return {
-    adminPassword: process.env.ADMIN_PASSWORD || 'admin123',
+    adminPasswordHash: process.env.ADMIN_PASSWORD_HASH,
     jwtSecret: process.env.JWT_SECRET || 'default-secret-change-in-production',
     readOnly: process.env.READ_ONLY === 'true',
     visibilityMode: (process.env.VISIBILITY_MODE as 'publish' | 'edited') || 'publish'
@@ -16,61 +31,76 @@ export function getAppConfig(): AppConfig {
 
 // Verificar contraseña de admin (dual: desarrollador + párroco)
 export async function verifyAdminPassword(password: string): Promise<boolean> {
-  const config = getAppConfig();
-  
-  // Verificar contraseña maestra del desarrollador (desde .env)
-  if (password === config.adminPassword) {
-    return true;
-  }
-  
-  // Verificar contraseña del párroco (desde archivo)
-  return await verifyParishPassword(password);
-}
-
-// Generar JWT token
-export function generateToken(user: AuthUser): string {
-  const config = getAppConfig();
-  return jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
-    config.jwtSecret,
-    { expiresIn: '24h' }
-  );
-}
-
-// Verificar JWT token
-export function verifyToken(token: string): AuthUser | null {
   try {
     const config = getAppConfig();
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
-    return {
-      id: decoded.id,
-      username: decoded.username,
-      role: decoded.role
-    };
+    
+    // Verificar contraseña maestra del desarrollador (desde .env con argon2)
+    const isValidAdmin = await argon2.verify(config.adminPasswordHash, password);
+    if (isValidAdmin) {
+      return true;
+    }
+    
+    // Verificar contraseña del párroco (desde archivo)
+    return await verifyParishPassword(password);
   } catch (error) {
-    return null;
+    // Log del error sin exponer información sensible
+    console.error('Error verificando contraseña de admin:', error instanceof Error ? error.message : 'Error desconocido');
+    return false;
   }
 }
 
-// Obtener usuario autenticado desde cookies
-export async function getAuthenticatedUser(): Promise<AuthUser | null> {
+// Generar JWT token con configuración endurecida
+export function generateToken(user: AuthUser): string {
+  return signAccessToken({
+    id: user.id,
+    username: user.username,
+    role: user.role
+  });
+}
+
+// Verificar JWT token con rotación de secretos y clock skew
+export function verifyToken(token: string): { user: AuthUser | null; needsRefresh: boolean; error?: string } {
+  const result = verifyAccessToken(token);
+  
+  if (result.payload && !result.error) {
+    return {
+      user: {
+        id: result.payload.id,
+        username: result.payload.username,
+        role: result.payload.role as 'admin'
+      },
+      needsRefresh: result.needsRefresh || false,
+      error: result.error
+    };
+  }
+  
+  return {
+    user: null,
+    needsRefresh: false,
+    error: result.error || 'Token inválido'
+  };
+}
+
+// Obtener usuario autenticado desde cookies seguras
+export async function getAuthenticatedUser(): Promise<{ user: AuthUser | null; needsRefresh: boolean }> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
+    const token = cookieStore.get('admin_access')?.value;
     
     if (!token) {
-      return null;
+      return { user: null, needsRefresh: false };
     }
     
-    return verifyToken(token);
+    const result = verifyToken(token);
+    return { user: result.user, needsRefresh: result.needsRefresh };
   } catch (error) {
-    return null;
+    return { user: null, needsRefresh: false };
   }
 }
 
 // Verificar si el usuario es admin
 export async function isAdmin(): Promise<boolean> {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
   return user?.role === 'admin';
 }
 
@@ -86,45 +116,42 @@ export function getVisibilityMode(): 'publish' | 'edited' {
   return config.visibilityMode;
 }
 
-// Verificar autenticación de admin para APIs
-export async function verifyAdminAuth(request?: Request) {
-  let userIsAdmin = false;
+// Verificar autenticación de admin para APIs con JWT endurecido
+export async function verifyAdminAuth(request?: Request): Promise<{
+  success: boolean;
+  user: AuthUser | null;
+  needsRefresh?: boolean;
+  error?: string;
+}> {
+  let user: AuthUser | null = null;
+  let needsRefresh = false;
+  let error: string | undefined;
   
   if (request) {
     // Si se proporciona request, verificar cookies directamente
     const cookieHeader = request.headers.get('cookie');
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {} as Record<string, string>);
-      
-      const token = cookies['auth-token'];
-      const sessionData = cookies['auth-session'];
-      
-      if (token) {
-        const user = verifyToken(token);
-        userIsAdmin = user?.role === 'admin';
-      } else if (sessionData) {
-        try {
-          const decodedSession = decodeURIComponent(sessionData);
-          const session = JSON.parse(decodedSession);
-          userIsAdmin = session?.role === 'admin';
-        } catch (error) {
-          // Si no se puede parsear la sesión, no está autorizado
-          userIsAdmin = false;
-        }
-      }
+    const token = extractTokenFromCookies(cookieHeader);
+    
+    if (token) {
+      const result = verifyToken(token);
+      user = result.user;
+      needsRefresh = result.needsRefresh;
+      error = result.error;
     }
   } else {
     // Fallback al método original
-    userIsAdmin = await isAdmin();
+    const authResult = await getAuthenticatedUser();
+    user = authResult.user;
+    needsRefresh = authResult.needsRefresh;
   }
   
+  const isAdminUser = user?.role === 'admin';
+  
   return {
-    success: userIsAdmin,
-    user: userIsAdmin ? { role: 'admin' } : null
+    success: isAdminUser,
+    user: isAdminUser ? user : null,
+    needsRefresh,
+    error
   };
 }
 

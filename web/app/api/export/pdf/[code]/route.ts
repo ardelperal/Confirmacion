@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/content-loader';
-import fs from 'fs';
 import path from 'path';
-import puppeteer from 'puppeteer';
+import { generatePdf, checkGotenbergHealth } from '@/lib/pdf';
 import { logDownload, createLogContext } from '@/lib/logging-middleware';
+import { assertValidSlug } from '@/lib/slug';
+import fs from 'fs';
 
 export async function GET(
   request: NextRequest,
@@ -17,8 +18,10 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const adminPreview = searchParams.get('adminPreview') === '1';
     
-    // Validar código (aceptar mayúsculas y minúsculas)
-    if (!code || !code.match(/^[A-Fa-f][1-6]$/)) {
+    // Validar slug del código
+    try {
+      assertValidSlug(code.toLowerCase());
+    } catch (error) {
       return NextResponse.json(
         { error: 'Código de sesión inválido' },
         { status: 400 }
@@ -31,9 +34,14 @@ export async function GET(
       try {
         const cookieStore = await cookies();
         const authCookie = cookieStore.get('auth-session');
-        if (authCookie) {
-          const session = JSON.parse(authCookie.value);
-          isAdmin = session.role === 'admin';
+        if (authCookie && authCookie.value && authCookie.value.trim()) {
+          try {
+            const session = JSON.parse(authCookie.value);
+            isAdmin = session.role === 'admin';
+          } catch (parseError) {
+            console.error('Error parsing auth cookie:', parseError);
+            // Cookie corrupta, continuar como no admin
+          }
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -127,33 +135,25 @@ export async function GET(
 </body>
 </html>`;
 
-    // Generar PDF con Puppeteer
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run'
-      ]
+    // Verificar que Gotenberg esté disponible
+    const isGotenbergHealthy = await checkGotenbergHealth();
+    if (!isGotenbergHealthy) {
+      console.error('Gotenberg service is not available');
+      return NextResponse.json(
+        { error: 'Servicio de generación PDF no disponible' },
+        { status: 503 }
+      );
+    }
+
+    // Generar PDF con Gotenberg (seguro)
+    const pdfBuffer = await generatePdf(fullHtml, {
+      filename: `${code.toLowerCase()}_session.pdf`,
+      marginTop: '20mm',
+      marginRight: '20mm',
+      marginBottom: '20mm',
+      marginLeft: '20mm',
+      format: 'A4'
     });
-    
-    const page = await browser.newPage();
-    await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      },
-      printBackground: true
-    });
-    
-    await browser.close();
     
     // Log descarga exitosa
     logDownload('pdf', code, {

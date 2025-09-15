@@ -8,10 +8,15 @@ services:
     ports:
       - "3001:3000"
     volumes:
-      - ./data/content:/app/content
+      - ./data/content:/app/content:ro
+      - content-data:/app/content
       - ./data/auth:/app/data
       - ./data/logs:/app/data/logs
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /app/.next/cache:noexec,nosuid,size=200m
     depends_on:
       - gotenberg
     environment:
@@ -19,28 +24,56 @@ services:
       - GOTENBERG_URL=http://gotenberg:3000
     networks:
       - catequesis-network
+      - internal_net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   gotenberg:
     image: gotenberg/gotenberg:7
-    ports:
-      - "3002:3000"
+    # Sin puertos expuestos al host para mayor seguridad
     restart: unless-stopped
     command:
       - "gotenberg"
       - "--chromium-disable-web-security"
       - "--chromium-allow-list=file:///*"
+      - "--chromium-disable-routes"
+      - "--api-timeout=20s"
     networks:
-      - catequesis-network
+      - internal_net  # Solo red interna
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    # Límites de recursos para prevenir abuso
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
 networks:
   catequesis-network:
     driver: bridge
+  internal_net:
+    driver: bridge
+    internal: true  # Red completamente interna, sin acceso externo
 
 volumes:
   content-data:

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdmin } from '@/lib/auth';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { logAdminAction, createLogContext } from '@/lib/logging-middleware';
+import { checkAdminRateLimit } from '@/lib/adminRateLimit';
 
 const DEFAULT_TEMPLATE = `---
 code: {CODE}
@@ -96,6 +98,21 @@ export async function POST(request: NextRequest) {
   const logContext = createLogContext(request);
   
   try {
+    // Verificar rate limiting
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+    
+    // Verificar autenticación
+    const userIsAdmin = await isAdmin();
+    if (!userIsAdmin) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+
     const { code } = await request.json();
 
     // Validar código

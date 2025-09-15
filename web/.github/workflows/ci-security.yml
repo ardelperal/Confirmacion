@@ -1,0 +1,59 @@
+name: CI & Security
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - staging
+      - "*"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  node-build-test-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Corepack (pnpm/yarn si se usa)
+        run: |
+          corepack enable || true
+
+      - name: Install deps (prod + dev)
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Typecheck (opcional)
+        run: npm run -s typecheck --if-present
+
+      - name: Lint (opcional)
+        run: npm run -s lint --if-present
+
+      - name: Tests (opcional)
+        run: npm test --if-present -- --ci
+
+      - name: Build (garantiza que compila)
+        run: npm run -s build --if-present
+
+      - name: npm audit (high+). No fallar el job pero subir reporte
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high --json > audit.json || true
+          echo "Resumen de vulnerabilidades detectadas:"
+          (command -v jq >/dev/null && jq -r '.metadata.vulnerabilities' audit.json) || cat audit.json | head -n 50 || true
+
+      - name: Subir reporte de audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: audit.json

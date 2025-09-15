@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdmin } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { checkAdminRateLimit } from '@/lib/adminRateLimit';
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Verificar rate limiting
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+    
+    // Verificar autenticación
+    const userIsAdmin = await isAdmin();
+    if (!userIsAdmin) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+
     const { code } = await request.json();
     
     // Validar código
