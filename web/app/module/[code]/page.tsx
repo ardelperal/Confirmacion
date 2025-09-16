@@ -31,10 +31,22 @@ export default async function ModulePage({ params }: ModulePageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Breadcrumbs */}
       <Breadcrumbs items={[
-        { label: 'Inicio', href: '/' },
-        { label: 'Módulos', href: '/modules' },
+        { label: 'Portal de Catequesis', href: '/' },
         { label: `Módulo ${info.code}`, href: `/module/${info.code}` }
       ]} />
+      
+      {/* Botón de retorno */}
+      <div className="mb-4 print:hidden">
+        <Link 
+          href="/#modulos-confirmacion" 
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver a Módulos de Confirmación
+        </Link>
+      </div>
       
       {/* Header del módulo */}
       <div className="bg-white shadow-sm border border-gray-200 rounded-lg mb-6 print:shadow-none print:border-0">
