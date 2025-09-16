@@ -1,0 +1,3 @@
+[submodule "external/catequesis"]
+	path = external/catequesis
+	url = https://github.com/ardelperal/catequesis.git
