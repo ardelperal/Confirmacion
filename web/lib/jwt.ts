@@ -48,7 +48,12 @@ function base64UrlEncode(data: string): string {
     
     for (let i = 0; i < bytes.length; i += chunkSize) {
       const chunk = bytes.slice(i, i + chunkSize);
-      base64 += btoa(String.fromCharCode(...chunk));
+      // Convertir Uint8Array a string sin usar spread operator
+      let chunkStr = '';
+      for (let j = 0; j < chunk.length; j++) {
+        chunkStr += String.fromCharCode(chunk[j]);
+      }
+      base64 += btoa(chunkStr);
     }
     
     return base64
@@ -105,7 +110,13 @@ async function createJWT(payload: JWTPayload, secret: string): Promise<string> {
   
   const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
   const signatureArray = new Uint8Array(signatureBuffer);
-  const base64Signature = btoa(String.fromCharCode(...signatureArray));
+  
+  // Convertir Uint8Array a string sin usar spread operator
+  let signatureStr = '';
+  for (let i = 0; i < signatureArray.length; i++) {
+    signatureStr += String.fromCharCode(signatureArray[i]);
+  }
+  const base64Signature = btoa(signatureStr);
   const signature = base64Signature
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -140,7 +151,12 @@ async function verifyJWT(token: string, secret: string): Promise<JWTPayload> {
   const paddedSignature = signature + '='.repeat((4 - signature.length % 4) % 4);
   const base64Signature = paddedSignature.replace(/-/g, '+').replace(/_/g, '/');
   const signatureBytes = atob(base64Signature);
-  const signatureBuffer = new Uint8Array([...signatureBytes].map(c => c.charCodeAt(0)));
+  
+  // Convertir string a Uint8Array sin usar spread operator
+  const signatureBuffer = new Uint8Array(signatureBytes.length);
+  for (let i = 0; i < signatureBytes.length; i++) {
+    signatureBuffer[i] = signatureBytes.charCodeAt(i);
+  }
   
   const isValid = await crypto.subtle.verify('HMAC', cryptoKey, signatureBuffer, messageData);
   
@@ -219,7 +235,8 @@ export async function verifyAccessToken(token: string): Promise<VerifyResult> {
           needsRefresh: true, // Forzar refresh para migrar al nuevo secreto
           error: 'Token firmado con secreto anterior, requiere renovación'
         };
-      } catch (previousError) {
+      } catch {
+        // Error al verificar con secreto anterior
         return {
           payload: null,
           error: `Token inválido: ${(currentError as Error).message}`

@@ -14,7 +14,10 @@ const eslintConfig = [
   {
     rules: {
       // Reglas personalizadas aquí
-      "no-unused-vars": "warn",
+      "no-unused-vars": ["warn", { 
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
     },
   },
 ];
