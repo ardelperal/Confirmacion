@@ -5,7 +5,7 @@ import matter from 'gray-matter';
 
 export async function POST(request: NextRequest) {
   try {
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
+    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
     
     // Verificar que el directorio existe
     if (!fs.existsSync(sessionsDir)) {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Obtener todos los archivos .md
     const files = fs.readdirSync(sessionsDir)
       .filter(file => file.endsWith('.md'))
-      .filter(file => file.match(/^[A-F][1-6]\.md$/)); // Solo archivos con formato válido
+      .filter(file => file.match(/^[A-F][1-4]\.md$/)); // Solo archivos con formato válido
 
     if (files.length === 0) {
       return NextResponse.json(

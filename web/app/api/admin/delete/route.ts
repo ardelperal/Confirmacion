@@ -24,15 +24,15 @@ export async function DELETE(request: NextRequest) {
 
     const { code } = await request.json();
     
-    // Validar código
-    if (!code || !code.match(/^[A-F][1-6]$/)) {
+    // Validar código (permitir códigos estándar A1-F4 y el caso especial 'new')
+    if (!code || (!code.match(/^[A-F][1-4]$/) && code !== 'new')) {
       return NextResponse.json(
         { error: 'Código inválido' },
         { status: 400 }
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
+    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
     const filePath = path.join(sessionsDir, `${code}.md`);
     
     // Verificar que el archivo existe
@@ -49,7 +49,7 @@ export async function DELETE(request: NextRequest) {
     const version = frontMatter.version || 1;
 
     // Crear directorio de papelera si no existe
-    const trashDir = path.join(process.cwd(), 'content', '.trash');
+    const trashDir = path.join(process.cwd(), '..', 'data', '.trash');
     if (!fs.existsSync(trashDir)) {
       fs.mkdirSync(trashDir, { recursive: true });
     }
@@ -97,7 +97,7 @@ async function logAudit(entry: {
   trashFile?: string;
 }) {
   try {
-    const contentDir = path.join(process.cwd(), 'content');
+    const contentDir = path.join(process.cwd(), '..', 'data');
     const auditPath = path.join(contentDir, '.audit.log');
     
     // Crear directorio si no existe

@@ -50,8 +50,8 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
 }
 
 // Generar JWT token con configuración endurecida
-export function generateToken(user: AuthUser): string {
-  return signAccessToken({
+export async function generateToken(user: AuthUser): Promise<string> {
+  return await signAccessToken({
     id: user.id,
     username: user.username,
     role: user.role
@@ -59,8 +59,8 @@ export function generateToken(user: AuthUser): string {
 }
 
 // Verificar JWT token con rotación de secretos y clock skew
-export function verifyToken(token: string): { user: AuthUser | null; needsRefresh: boolean; error?: string } {
-  const result = verifyAccessToken(token);
+export async function verifyToken(token: string): Promise<{ user: AuthUser | null; needsRefresh: boolean; error?: string }> {
+  const result = await verifyAccessToken(token);
   
   if (result.payload && !result.error) {
     return {
@@ -91,7 +91,7 @@ export async function getAuthenticatedUser(): Promise<{ user: AuthUser | null; n
       return { user: null, needsRefresh: false };
     }
     
-    const result = verifyToken(token);
+    const result = await verifyToken(token);
     return { user: result.user, needsRefresh: result.needsRefresh };
   } catch (error) {
     return { user: null, needsRefresh: false };
@@ -133,7 +133,7 @@ export async function verifyAdminAuth(request?: Request): Promise<{
     const token = extractTokenFromCookies(cookieHeader);
     
     if (token) {
-      const result = verifyToken(token);
+      const result = await verifyToken(token);
       user = result.user;
       needsRefresh = result.needsRefresh;
       error = result.error;

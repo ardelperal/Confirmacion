@@ -1,30 +1,35 @@
-# Multi-stage build para optimizar tamaño de imagen
-# Etapa 1: Build
-FROM node:20-alpine AS builder
-
-# Instalar dependencias necesarias para el build
-RUN apk add --no-cache libc6-compat
-
+# ---------- deps ----------
+FROM node:20-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --prefer-offline; \
+    elif [ -f pnpm-lock.yaml ]; then corepack enable && pnpm i --frozen-lockfile; \
+    elif [ -f yarn.lock ]; then corepack enable && yarn install --frozen-lockfile; \
+    else npm i --no-audit; fi
 
-# Copiar archivos de dependencias
-COPY package*.json ./
-
-# Instalar todas las dependencias (necesarias para el build)
-RUN npm ci --no-audit --no-fund
-
-# Copiar código fuente
+# ---------- build ----------
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Crear directorio temporal para el build
-RUN mkdir -p /data/content
-RUN echo 'modules: []' > /data/content/modules.yml
+# Crear estructura de directorios necesaria para el build
+RUN mkdir -p ../data/content
+RUN echo 'modules: []' > ../data/content/modules.yml
 
-# Build de la aplicación
-RUN npm run build && npm cache clean --force
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build --if-present || npx next build
 
-# Etapa 2: Runtime
+# ---------- runtime ----------
 FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000
+
+# Usuario no root
+RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
 # Instalar dependencias de runtime para Puppeteer/Chrome
 RUN apk add --no-cache \
@@ -42,24 +47,12 @@ RUN apk add --no-cache \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-WORKDIR /app
-
-# Crear usuario no-root con UID/GID específicos
-RUN addgroup --system --gid 1001 nodejs \
-    && adduser --system --uid 1001 nextjs
-
-# Copiar package.json e instalar solo dependencias de producción
-COPY package*.json ./
-RUN npm ci --only=production --no-audit --no-fund && npm cache clean --force
-
-# Copiar archivos necesarios desde el builder
-    COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
-    COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-    COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Los archivos de contenido se montarán como volumen en runtime
+# Copiar archivos de build
+    COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
+    COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 
 # Crear directorio de contenido con permisos correctos
-RUN mkdir -p /app/content && chown -R nextjs:nodejs /app
+RUN mkdir -p /app/content && chown -R nextjs:nextjs /app
 
 # Cambiar a usuario no-root
 USER nextjs
@@ -67,11 +60,8 @@ USER nextjs
 # Exponer puerto
 EXPOSE 3000
 
-# Variables de entorno para producción
-ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000 \
-    HOSTNAME="0.0.0.0"
+# Variables de entorno adicionales
+ENV HOSTNAME="0.0.0.0"
 
 # Healthcheck para verificar que la aplicación responde
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

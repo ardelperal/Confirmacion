@@ -188,8 +188,8 @@ export default function SessionEditor() {
   };
 
   const handleDuplicate = async () => {
-    if (!duplicateCode.match(/^[A-F][1-6]$/)) {
-      alert('El código debe seguir el formato A1-F6');
+    if (!duplicateCode.match(/^[A-F][1-4]$/)) {
+      alert('El código debe seguir el formato A1-F4');
       return;
     }
     

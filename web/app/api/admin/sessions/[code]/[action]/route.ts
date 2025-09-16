@@ -6,7 +6,7 @@ import { isAdmin } from '@/lib/auth';
 import { logAuditAction } from '@/lib/audit';
 import { SessionFrontMatter } from '@/types';
 
-const SESSIONS_DIR = path.join(process.cwd(), 'content', 'sessions');
+const SESSIONS_DIR = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
 
 export async function POST(
   request: NextRequest,

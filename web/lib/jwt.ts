@@ -35,22 +35,52 @@ function getJWTSecrets(): { current: string; previous?: string } {
   return { current, previous };
 }
 
-// Funciones JWT nativas usando Web Crypto API
+// Funciones JWT nativas usando Web Crypto API (compatible con edge runtime)
 function base64UrlEncode(data: string): string {
-  return Buffer.from(data)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  try {
+    // Usar TextEncoder en lugar de Buffer para edge runtime
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(data);
+    
+    // Evitar crear arrays grandes que causen problemas de memoria
+    let base64 = '';
+    const chunkSize = 8192; // Procesar en chunks de 8KB
+    
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      base64 += btoa(String.fromCharCode(...chunk));
+    }
+    
+    return base64
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  } catch (error) {
+    throw new Error('Error codificando base64url: ' + error);
+  }
 }
 
 function base64UrlDecode(data: string): string {
-  // Agregar padding si es necesario
-  const padded = data + '='.repeat((4 - data.length % 4) % 4);
-  return Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
+  try {
+    // Agregar padding si es necesario
+    const padded = data + '='.repeat((4 - data.length % 4) % 4);
+    const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = atob(base64);
+    
+    // Evitar crear arrays grandes que causen problemas de memoria
+    const byteArray = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) {
+      byteArray[i] = bytes.charCodeAt(i);
+    }
+    
+    const decoder = new TextDecoder();
+    return decoder.decode(byteArray);
+  } catch (error) {
+    throw new Error('Error decodificando base64url: ' + error);
+  }
 }
 
-function createJWT(payload: JWTPayload, secret: string): string {
+async function createJWT(payload: JWTPayload, secret: string): Promise<string> {
   const header = {
     alg: JWT_ALGORITHM,
     typ: 'JWT'
@@ -60,12 +90,23 @@ function createJWT(payload: JWTPayload, secret: string): string {
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
   const data = `${encodedHeader}.${encodedPayload}`;
   
-  // Crear HMAC SHA-256 signature
-  const crypto = require('crypto');
-  const signature = crypto
-    .createHmac('sha256', secret)
-    .update(data)
-    .digest('base64')
+  // Crear HMAC SHA-256 signature usando Web Crypto API
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(data);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  const signatureArray = new Uint8Array(signatureBuffer);
+  const base64Signature = btoa(String.fromCharCode(...signatureArray));
+  const signature = base64Signature
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
@@ -73,7 +114,7 @@ function createJWT(payload: JWTPayload, secret: string): string {
   return `${data}.${signature}`;
 }
 
-function verifyJWT(token: string, secret: string): JWTPayload {
+async function verifyJWT(token: string, secret: string): Promise<JWTPayload> {
   const parts = token.split('.');
   if (parts.length !== 3) {
     throw new Error('Token malformado');
@@ -82,17 +123,28 @@ function verifyJWT(token: string, secret: string): JWTPayload {
   const [encodedHeader, encodedPayload, signature] = parts;
   const data = `${encodedHeader}.${encodedPayload}`;
   
-  // Verificar signature
-  const crypto = require('crypto');
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(data)
-    .digest('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  // Verificar signature usando Web Crypto API
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(data);
   
-  if (signature !== expectedSignature) {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  
+  // Decodificar la signature recibida
+  const paddedSignature = signature + '='.repeat((4 - signature.length % 4) % 4);
+  const base64Signature = paddedSignature.replace(/-/g, '+').replace(/_/g, '/');
+  const signatureBytes = atob(base64Signature);
+  const signatureBuffer = new Uint8Array([...signatureBytes].map(c => c.charCodeAt(0)));
+  
+  const isValid = await crypto.subtle.verify('HMAC', cryptoKey, signatureBuffer, messageData);
+  
+  if (!isValid) {
     throw new Error('Signature inválida');
   }
   
@@ -119,10 +171,10 @@ function verifyJWT(token: string, secret: string): JWTPayload {
  * @param options - Opciones de firma (expiresIn por defecto 15m)
  * @returns Token JWT firmado
  */
-export function signAccessToken(
+export async function signAccessToken(
   payload: Omit<JWTPayload, 'iat' | 'exp'>, 
   options: SignOptions = {}
-): string {
+): Promise<string> {
   const { current } = getJWTSecrets();
   const now = Math.floor(Date.now() / 1000);
   const expiresIn = options.expiresIn || DEFAULT_ACCESS_TTL;
@@ -133,7 +185,7 @@ export function signAccessToken(
     exp: now + expiresIn
   };
   
-  return createJWT(tokenPayload, current);
+  return await createJWT(tokenPayload, current);
 }
 
 /**
@@ -141,12 +193,12 @@ export function signAccessToken(
  * @param token - Token JWT a verificar
  * @returns Resultado de verificación con payload y flags
  */
-export function verifyAccessToken(token: string): VerifyResult {
+export async function verifyAccessToken(token: string): Promise<VerifyResult> {
   const { current, previous } = getJWTSecrets();
   
   // Intentar verificar con el secreto actual
   try {
-    const decoded = verifyJWT(token, current);
+    const decoded = await verifyJWT(token, current);
     
     // Verificar si necesita refresh (cerca de expirar)
     const needsRefresh = checkNeedsRefresh(decoded);
@@ -159,7 +211,7 @@ export function verifyAccessToken(token: string): VerifyResult {
     // Si falla con secreto actual, intentar con secreto anterior (rotación suave)
     if (previous) {
       try {
-        const decoded = verifyJWT(token, previous);
+        const decoded = await verifyJWT(token, previous);
         
         // Token válido con secreto anterior - forzar reemisión
         return {

@@ -15,14 +15,14 @@ export async function POST(request: NextRequest) {
     const { code } = await request.json();
     
     // Validar código
-    if (!code || !code.match(/^[A-F][1-6]$/)) {
+    if (!code || !code.match(/^[A-F][1-4]$/)) {
       return NextResponse.json(
         { error: 'Código inválido' },
         { status: 400 }
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), 'content', 'sessions');
+    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
     const filePath = path.join(sessionsDir, `${code}.md`);
     
     // Verificar que el archivo existe

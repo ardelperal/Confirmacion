@@ -97,16 +97,20 @@ export default function AdminPanel() {
     if (confirm(`¿Estás seguro de que quieres borrar la sesión ${code}?`)) {
       try {
         const response = await fetch('/api/admin/delete', {
-          method: 'POST',
+          method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code }),
           credentials: 'include'
         });
         if (response.ok) {
           loadSessions();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Error eliminando sesión');
         }
       } catch (error) {
         console.error('Error deleting:', error);
+        alert('Error eliminando sesión');
       }
     }
   };
@@ -138,7 +142,7 @@ export default function AdminPanel() {
   };
 
   const handleCreateSession = async () => {
-    if (!newSessionCode.match(/^[A-F][1-6]$/)) {
+    if (!newSessionCode.match(/^[A-F][1-4]$/)) {
       alert('El código debe seguir el formato A1-F6');
       return;
     }

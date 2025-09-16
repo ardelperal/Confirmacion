@@ -17,13 +17,15 @@ const PUBLIC_ROUTES = [
   '/api/auth/refresh'
 ];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  console.log('MIDDLEWARE EJECUTADO - Pathname:', pathname);
   
   // Verificar si la ruta requiere autenticación
   const isProtectedRoute = PROTECTED_ROUTES.some(route => 
     pathname.startsWith(route)
   );
+  console.log('MIDDLEWARE - Is protected route:', isProtectedRoute);
   
   // Si no es una ruta protegida, permitir acceso
   if (!isProtectedRoute) {
@@ -32,9 +34,12 @@ export function middleware(request: NextRequest) {
   
   // Extraer JWT token de cookies seguras
   const cookieHeader = request.headers.get('cookie');
+  console.log('Middleware - Cookie header:', cookieHeader);
   const token = extractTokenFromCookies(cookieHeader);
+  console.log('Middleware - Extracted token:', token ? 'Token found' : 'No token');
   
   if (!token) {
+    console.log('Middleware - No token, redirecting to login');
     // Redirigir a login si no hay token
     if (pathname.startsWith('/api/admin')) {
       return NextResponse.json(
@@ -46,9 +51,15 @@ export function middleware(request: NextRequest) {
   }
   
   // Verificar JWT token con endurecimiento
-  const verificationResult = verifyAccessToken(token);
+  const verificationResult = await verifyAccessToken(token);
+  console.log('Middleware - Token verification result:', {
+    hasPayload: !!verificationResult.payload,
+    error: verificationResult.error,
+    role: verificationResult.payload?.role
+  });
   
   if (!verificationResult.payload || verificationResult.error) {
+    console.log('Middleware - Token invalid, redirecting to login');
     // Token inválido o expirado
     if (pathname.startsWith('/api/admin')) {
       return NextResponse.json(

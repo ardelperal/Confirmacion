@@ -28,7 +28,23 @@ export async function POST(request: NextRequest) {
       return response;
     }
     
-    const { password } = await request.json();
+    const { username, password } = await request.json();
+    
+    // Verificar que se proporcionen los campos requeridos
+    if (!username || !password) {
+      return NextResponse.json(
+        { error: 'Username y password son requeridos' },
+        { status: 400 }
+      );
+    }
+    
+    // Verificar que el username sea 'admin'
+    if (username !== 'admin') {
+      return NextResponse.json(
+        { error: 'Usuario no válido' },
+        { status: 401 }
+      );
+    }
 
     // Verificar contraseña usando el sistema dual de autenticación
     const isValidPassword = await verifyAdminPassword(password);
@@ -60,7 +76,7 @@ export async function POST(request: NextRequest) {
       role: 'admin' as const
     };
     
-    const token = generateToken(user);
+    const token = await generateToken(user);
     
     // Crear respuesta exitosa
     const response = NextResponse.json({ 

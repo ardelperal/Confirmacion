@@ -15,23 +15,29 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('Enviando login request...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username: 'admin', password }),
         credentials: 'include'
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (response.ok) {
+        console.log('Login exitoso, redirigiendo a /admin');
         router.push('/admin');
       } else {
+        console.log('Login falló:', data.error);
         setError(data.error || 'Contraseña incorrecta');
       }
     } catch (err) {
+      console.error('Error en login:', err);
       setError('Error de conexión');
     } finally {
       setLoading(false);

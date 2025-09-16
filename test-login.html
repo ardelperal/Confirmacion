@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+</head>
+<body>
+    <h1>Test de Login</h1>
+    <form id="loginForm">
+        <input type="password" id="password" placeholder="Contraseña" value="Arm1833a">
+        <button type="submit">Login</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Enviando login request...');
+                const response = await fetch('http://localhost:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: 'admin', password }),
+                    credentials: 'include'
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p style="color: green;">Login exitoso! Datos: ' + JSON.stringify(data) + '</p>';
+                    console.log('Login exitoso, intentando acceder a /admin');
+                    
+                    // Probar acceso a admin
+                    const adminResponse = await fetch('http://localhost:3001/admin', {
+                        credentials: 'include'
+                    });
+                    console.log('Admin response status:', adminResponse.status);
+                    
+                    if (adminResponse.ok) {
+                        resultDiv.innerHTML += '<p style="color: green;">Acceso a /admin exitoso!</p>';
+                    } else {
+                        resultDiv.innerHTML += '<p style="color: red;">Error accediendo a /admin: ' + adminResponse.status + '</p>';
+                    }
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">Login falló: ' + (data.error || 'Error desconocido') + '</p>';
+                }
+            } catch (err) {
+                console.error('Error en login:', err);
+                resultDiv.innerHTML = '<p style="color: red;">Error de conexión: ' + err.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

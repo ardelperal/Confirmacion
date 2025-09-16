@@ -12,7 +12,7 @@ services:
       - content-data:/app/content
       - ./data/auth:/app/data
       - ./data/logs:/app/data/logs
-    restart: unless-stopped
+    restart: always
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=100m
@@ -43,7 +43,7 @@ services:
   gotenberg:
     image: gotenberg/gotenberg:7
     # Sin puertos expuestos al host para mayor seguridad
-    restart: unless-stopped
+    restart: always
     command:
       - "gotenberg"
       - "--chromium-disable-web-security"

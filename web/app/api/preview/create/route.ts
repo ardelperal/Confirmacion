@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
-import { randomBytes } from 'crypto';
+// Removido import de crypto de Node.js para compatibilidad con edge runtime
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -24,9 +24,11 @@ async function ensureTokensDir() {
   }
 }
 
-// Generar token aleatorio de 32 bytes
+// Generar token aleatorio de 32 bytes usando Web Crypto API
 function generateToken(): string {
-  return randomBytes(32).toString('hex');
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 // Guardar token en archivo

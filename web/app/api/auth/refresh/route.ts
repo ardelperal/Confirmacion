@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Generar nuevo token
-    const newToken = generateToken(authResult.user);
+    const newToken = await generateToken(authResult.user);
     
     // Crear respuesta con nueva cookie segura
     const response = NextResponse.json(

@@ -164,8 +164,8 @@ function convertContentToDocx(content: string, title: string, code: string): any
     const line = lines[i];
     const trimmedLine = line.trim();
     
-    // Salto de página
-    if (trimmedLine === '---pagebreak---') {
+    // Salto de página (marcador original o etiqueta HTML)
+    if (trimmedLine === '---pagebreak---' || trimmedLine === '<div class="pagebreak"></div>') {
       flushCurrentList();
       elements.push(new PageBreak());
       continue;
@@ -301,7 +301,17 @@ function convertContentToDocx(content: string, title: string, code: string): any
   
   function processTextFormatting(text: string): TextRun[] {
     const children: TextRun[] = [];
-    let remainingText = text;
+    
+    // Limpiar etiquetas HTML del texto antes de procesar
+    let cleanText = text
+      .replace(/<[^>]*>/g, '') // Eliminar todas las etiquetas HTML
+      .replace(/&lt;/g, '<')   // Decodificar entidades HTML
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    
+    let remainingText = cleanText;
     
     // Procesar texto con formato combinado (negrita, cursiva)
     while (remainingText.length > 0) {
