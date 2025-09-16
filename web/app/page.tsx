@@ -57,7 +57,14 @@ export default async function HomePage() {
           <p>
             {sessions.length} sesiones disponibles en {Object.keys(sessionsByModule).length} módulos
           </p>
-          <div className="mt-4">
+          <div className="mt-4 space-x-4">
+            <a 
+              href="/recursos" 
+              className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+              title="Recursos de catequesis"
+            >
+              Recursos
+            </a>
             <a 
               href="/login" 
               className="text-xs text-gray-400 hover:text-gray-600 transition-colors"

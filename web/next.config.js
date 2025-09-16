@@ -33,6 +33,20 @@ const nextConfig = {
   // Configuración para manejo de archivos markdown
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   
+  // Rewrites para recursos de catequesis
+  async rewrites() {
+    return [
+      {
+        source: '/recursos/catequesis',
+        destination: '/recursos/catequesis/indice_general.html'
+      },
+      {
+        source: '/recursos/catequesis/fichas/:slug',
+        destination: '/recursos/catequesis/fichas/:slug.html'
+      }
+    ];
+  },
+
   // Headers de seguridad
   async headers() {
     const securityHeaders = [
@@ -66,7 +80,27 @@ const nextConfig = {
       });
     }
 
+    // Headers específicos para recursos de catequesis (solo-lectura)
+    const catequesisHeaders = [
+      {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff'
+      },
+      {
+        key: 'Referrer-Policy',
+        value: 'strict-origin-when-cross-origin'
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'geolocation=(),camera=(),microphone=()'
+      }
+    ];
+
     return [
+      {
+        source: '/recursos/catequesis/(.*)',
+        headers: catequesisHeaders
+      },
       {
         source: '/(.*)',
         headers: securityHeaders

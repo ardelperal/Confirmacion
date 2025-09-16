@@ -162,6 +162,62 @@ data/
     └── audit.log          # Log de auditoría
 ```
 
+## 📚 Recursos de Catequesis
+
+### Estructura del Sistema
+El contenido de catequesis se gestiona como un **submódulo Git** independiente:
+- **Fuente**: `external/catequesis/` (submódulo Git)
+- **Destino**: `web/public/recursos/catequesis/` (copia sincronizada)
+- **Rutas públicas**: 
+  - `/recursos` - Página principal de recursos
+  - `/recursos/catequesis` - Índice general de catequesis
+  - `/recursos/catequesis/indice_general.html` - Listado completo
+  - `/recursos/catequesis/fichas/<personaje>.html` - Fichas individuales
+
+### Comandos de Sincronización
+
+#### Primera vez (configuración inicial)
+```powershell
+# Clonar el submódulo de catequesis
+git submodule update --init --recursive
+
+# Sincronizar contenido a la web
+npm run sync:catequesis
+```
+
+#### Actualizar contenido existente
+```powershell
+# Opción 1: Comando directo (recomendado)
+npm run sync:catequesis
+
+# Opción 2: Actualizar submódulo y sincronizar
+git submodule update --remote external/catequesis
+npm run sync:catequesis
+```
+
+### Despliegue Automático
+El sistema de **CI/CD** se encarga automáticamente de:
+1. **Clonar submódulos**: `git submodule update --init --recursive`
+2. **Sincronizar recursos**: Ejecuta `sync-catequesis.mjs` antes del build
+3. **Construir aplicación**: `next build` con recursos actualizados
+
+Ver configuración en `.github/workflows/ci-security.yml` y `Dockerfile`.
+
+### Desarrollo Local
+Para trabajar con los recursos de catequesis:
+```powershell
+# 1. Sincronizar contenido
+npm run sync:catequesis
+
+# 2. Iniciar servidor de desarrollo
+cd web
+npm run dev
+
+# 3. Verificar recursos en: http://localhost:3000/recursos/catequesis
+```
+
+**Criterio de éxito**: Cualquier desarrollador puede actualizar el contenido con **1 comando** (`npm run sync:catequesis`) y ver los cambios inmediatamente en el servidor local.
+
 ## 🔒 Backup y Seguridad
 
 ### Sistema de Backup

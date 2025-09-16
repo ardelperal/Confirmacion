@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "sync:catequesis": "node scripts/sync-catequesis.mjs",
+    "prebuild": "npm run --if-present typegen && node scripts/sync-catequesis.mjs"
+  },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@types/js-yaml": "^4.0.9",

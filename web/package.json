@@ -11,6 +11,7 @@
     "typecheck": "tsc -p . --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "playwright test --reporter=list",
     "hash:admin": "ts-node --project tsconfig.node.json scripts/gen-admin-hash.ts"
   },
   "dependencies": {
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.1.0",
+    "@playwright/test": "^1.55.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",

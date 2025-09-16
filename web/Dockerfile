@@ -14,9 +14,16 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Copiar scripts y external/catequesis desde el contexto raíz del proyecto
+COPY ../scripts ./scripts
+COPY ../external/catequesis ./external/catequesis
+
 # Crear estructura de directorios necesaria para el build
 RUN mkdir -p ../data/content
 RUN echo 'modules: []' > ../data/content/modules.yml
+
+# Sincronizar recursos de catequesis antes del build
+RUN node scripts/sync-catequesis.mjs
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --if-present || npx next build
