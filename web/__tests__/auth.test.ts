@@ -135,17 +135,17 @@ describe('Autenticación con Argon2id', () => {
       role: 'admin' as const
     };
 
-    test('debe generar token JWT válido', () => {
-      const token = generateToken(testUser);
+    test('debe generar token JWT válido', async () => {
+      const token = await generateToken(testUser);
       
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
       expect(token.split('.').length).toBe(3); // JWT tiene 3 partes
     });
 
-    test('debe verificar token JWT válido', () => {
-      const token = generateToken(testUser);
-      const result = verifyToken(token);
+    test('debe verificar token JWT válido', async () => {
+      const token = await generateToken(testUser);
+      const result = await verifyToken(token);
       
       expect(result).toBeDefined();
       expect(result.user).toBeDefined();
@@ -155,17 +155,17 @@ describe('Autenticación con Argon2id', () => {
       expect(result.user?.role).toBe(testUser.role);
     });
 
-    test('debe fallar con token inválido', () => {
-      const result = verifyToken('invalid.jwt.token');
+    test('debe fallar con token inválido', async () => {
+      const result = await verifyToken('invalid.jwt.token');
       expect(result.user).toBeNull();
       expect(result.error).toBeDefined();
       expect(result.error).toContain('Token inválido');
     });
 
-    test('debe fallar con token expirado', () => {
+    test('debe fallar con token expirado', async () => {
       // Este test requeriría mockear el tiempo o usar una librería como jest-date-mock
       // Por simplicidad, solo verificamos que tokens malformados fallan
-      const result = verifyToken('');
+      const result = await verifyToken('');
       expect(result.user).toBeNull();
       expect(result.error).toBeDefined();
       expect(result.error).toContain('Token inválido');
@@ -273,8 +273,8 @@ describe('Integración de autenticación', () => {
     
     // 4. Generar y verificar token
     const user = { id: 'admin', username: 'admin', role: 'admin' as const };
-    const token = generateToken(user);
-    const result = verifyToken(token);
+    const token = await generateToken(user);
+    const result = await verifyToken(token);
     
     expect(result).toBeDefined();
     expect(result.user).toBeDefined();

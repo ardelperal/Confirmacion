@@ -150,8 +150,8 @@ export default function AdminDashboard({ sessions, auditStats }: AdminDashboardP
         </div>
       </div>
 
-      {/* Tabla de sesiones */}
-      <div className="overflow-x-auto">
+      {/* Vista de tabla para desktop */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -278,6 +278,126 @@ export default function AdminDashboard({ sessions, auditStats }: AdminDashboardP
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Vista de cards para móviles y tablets */}
+      <div className="lg:hidden space-y-4">
+        {filteredSessions.map((session) => {
+          const status = session.status || 'draft';
+          const isPublished = status === 'published';
+          
+          return (
+            <div key={session.code} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              {/* Header de la card */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {session.code}
+                    </span>
+                    {getStatusBadge(status)}
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
+                    {session.title || 'Sin título'}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Información adicional */}
+              <div className="grid grid-cols-2 gap-4 text-xs text-gray-500 mb-4">
+                <div>
+                  <span className="font-medium">Versión:</span> v{session.version || 1}
+                </div>
+                <div>
+                  <span className="font-medium">Editado:</span> {formatDate(session.updated)}
+                </div>
+                {session.publishedAt && (
+                  <div className="col-span-2">
+                    <span className="font-medium">Publicado:</span> {formatDate(session.publishedAt)}
+                  </div>
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center space-x-3">
+                  {/* Ver */}
+                  <button
+                    onClick={() => router.push(`/sesion/${session.code}`)}
+                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-900 text-sm"
+                    title="Ver sesión"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ver</span>
+                  </button>
+                  
+                  {/* Editar */}
+                  <button
+                    onClick={() => router.push(`/admin/edit/${session.code}`)}
+                    className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-900 text-sm"
+                    title="Editar"
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span className="hidden sm:inline">Editar</span>
+                  </button>
+                  
+                  {/* Publicar/Despublicar */}
+                  {isPublished ? (
+                    <button
+                      onClick={() => handleAction('unpublish', session.code)}
+                      disabled={loading === `unpublish-${session.code}`}
+                      className="flex items-center space-x-1 text-orange-600 hover:text-orange-900 disabled:opacity-50 text-sm"
+                      title="Retirar publicación"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span className="hidden sm:inline">Retirar</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleAction('publish', session.code)}
+                      disabled={loading === `publish-${session.code}`}
+                      className="flex items-center space-x-1 text-green-600 hover:text-green-900 disabled:opacity-50 text-sm"
+                      title="Publicar"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="hidden sm:inline">Publicar</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  {/* Archivar */}
+                  {status !== 'archived' && (
+                    <button
+                      onClick={() => handleAction('archive', session.code)}
+                      disabled={loading === `archive-${session.code}`}
+                      className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 text-sm"
+                      title="Archivar"
+                    >
+                      <Archive className="h-4 w-4" />
+                      <span className="hidden sm:inline">Archivar</span>
+                    </button>
+                  )}
+                  
+                  {/* Eliminar */}
+                  <button
+                    onClick={() => {
+                      if (confirm(`¿Estás seguro de eliminar la sesión ${session.code}?`)) {
+                        handleAction('delete', session.code);
+                      }
+                    }}
+                    disabled={loading === `delete-${session.code}`}
+                    className="flex items-center space-x-1 text-red-600 hover:text-red-900 disabled:opacity-50 text-sm"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Eliminar</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
       
       {filteredSessions.length === 0 && (

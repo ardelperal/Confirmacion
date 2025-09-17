@@ -4,338 +4,182 @@
 
 Sistema web para gestión de sesiones de catequesis dirigidas a jóvenes de 12-13 años en preparación para el sacramento de la Confirmación.
 
-## 🚀 Despliegue en NAS
+## ✨ Características
 
-### Requisitos
-- Docker y Docker Compose instalados
-- Puerto 8080 disponible para la aplicación web
-- Puerto 3001 disponible para el servicio Gotenberg (PDF)
+*   **Gestión de Sesiones:** Crear, editar, publicar y retirar sesiones de catequesis.
+*   **Modo de Visibilidad:** Controla qué sesiones son visibles para los usuarios (solo publicadas o también editadas).
+*   **Modo de Solo Lectura:** Deshabilita la edición y administración de sesiones.
+*   **Generación de PDF y DOCX:** Descarga sesiones en formato PDF y DOCX.
+*   **Recursos de Catequesis:** Acceso a fichas de personajes bíblicos y otros recursos.
+*   **Autenticación Segura:** Acceso de administrador protegido por contraseña.
+*   **Sistema de Backup y Restauración:** Scripts para crear y restaurar backups de los datos.
+*   **Despliegue con Docker:** Fácil de desplegar en cualquier sistema con Docker y Docker Compose.
 
-### Configuración inicial
+## 🚀 Tecnologías
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone <repository-url>
-   cd Confirmacion
-   ```
-
-2. **Configurar variables de entorno:**
-   ```bash
-   cp web/.env.sample .env
-   ```
-   
-   Editar `.env` con los valores de producción:
-   ```env
-   # Configuración de la aplicación
-   BASE_URL=http://192.168.1.100:8080
-   NODE_ENV=production
-   
-   # Autenticación (CAMBIAR CONTRASEÑA)
-   ADMIN_PASSWORD=MiClaveSegura2024!
-   JWT_SECRET=tu-clave-jwt-muy-segura-minimo-32-caracteres
-   
-   # Configuración de contenido
-   READ_ONLY=false
-   VISIBILITY_MODE=publish
-   
-   # Servicios externos
-   GOTENBERG_URL=http://gotenberg:3000
-   ```
-
-3. **Crear directorios de datos:**
-   ```bash
-   mkdir -p data/content data/logs
-   ```
-
-4. **Copiar contenido inicial:**
-   ```bash
-   cp -r web/content/* data/content/
-   ```
-
-### Despliegue
-
-```bash
-# Levantar los servicios
-docker compose up -d
-
-# Verificar que están funcionando
-docker compose ps
-docker compose logs web
-```
-
-## 🧪 Pasos de Prueba
-
-### 1. Verificación inicial
-
-1. **Acceder a la aplicación:**
-   - Abrir navegador en `http://192.168.1.100:8080`
-   - Verificar que la portada carga correctamente
-   - Confirmar que solo aparecen sesiones publicadas (inicialmente ninguna)
-
-2. **Verificar API pública:**
-   ```bash
-   curl http://192.168.1.100:8080/api/index.json
-   ```
-   Debe devolver array vacío `[]` (no hay sesiones publicadas)
-
-### 2. Pruebas de administración
-
-1. **Login de administrador:**
-   - Ir a `http://192.168.1.100:8080/login`
-   - Introducir la contraseña configurada en `ADMIN_PASSWORD`
-   - Verificar redirección a `/admin`
-
-2. **Edición de sesión:**
-   - En `/admin`, hacer clic en "Editar" en la sesión A1
-   - Modificar el título o contenido
-   - Hacer clic en "Guardar" → verificar que `status` sigue siendo "draft"
-   - Verificar que aparece mensaje de confirmación
-
-3. **Publicación de sesión:**
-   - Hacer clic en "Publicar" → verificar que `status` cambia a "published"
-   - Ir a la portada → verificar que la sesión A1 ahora aparece
-   - Verificar API: `curl http://192.168.1.100:8080/api/index.json`
-
-4. **Retirar sesión:**
-   - Volver a `/admin`, abrir A1
-   - Hacer clic en "Retirar" → verificar que `status` vuelve a "draft"
-   - Verificar que desaparece de la portada
-
-### 3. Modo de visibilidad alternativo
-
-1. **Cambiar a modo "edited":**
-   ```bash
-   # Editar .env
-   VISIBILITY_MODE=edited
-   
-   # Reiniciar contenedor
-   docker compose restart web
-   ```
-
-2. **Verificar comportamiento:**
-   - Las sesiones editadas (con `editedBy != null`) aparecen en vista pública
-   - Aunque el `status` sea "draft"
-   - Los botones "Publicar/Retirar" siguen disponibles en admin
-
-### 4. Modo solo lectura
-
-1. **Activar modo READ_ONLY:**
-   ```bash
-   # Editar .env
-   READ_ONLY=true
-   
-   # Reiniciar
-   docker compose restart web
-   ```
-
-2. **Verificar restricciones:**
-   - `/admin` redirige a la portada
-   - APIs `/api/admin/*` devuelven error 403
-   - Vista pública sigue funcionando normalmente
+*   **Frontend:** Next.js, React, Tailwind CSS
+*   **Backend:** Next.js (API Routes), Node.js
+*   **Base de Datos:** Sistema de archivos (Markdown para sesiones, YAML para módulos)
+*   **Generación de PDF:** [Gotenberg](https://gotenberg.dev/)
+*   **Generación de DOCX:** [docx](https://docx.js.org/)
+*   **Contenerización:** Docker, Docker Compose
 
 ## 📁 Estructura del Proyecto
 
 ```
 Confirmacion/
-├── web/                    # Aplicación Next.js
-├── data/
-│   ├── content/           # Contenido de sesiones (modificable por párroco)
-│   │   ├── sessions/      # Archivos .md de sesiones
-│   │   └── modules.yml    # Configuración de módulos
-│   └── auth/              # Autenticación del párroco
-├── docker-compose.yml     # Configuración Docker
-├── .env                   # Variables de entorno
-├── backup.ps1             # Script de backup automatizado
-├── restore.ps1            # Script de restauración
-├── BACKUP_SISTEMA.md      # Documentación del sistema de backup
-└── README.md             # Este archivo
+├── .env                   # Variables de entorno (crear a partir de web/.env.example)
+├── data/                  # Datos de la aplicación (sesiones, logs, etc.)
+│   ├── content/           # Contenido de las sesiones (.md) y módulos (.yml)
+│   ├── auth/              # Ficheros de autenticación
+│   └── logs/              # Logs de la aplicación
+├── docker-compose.yml     # Orquestación de los servicios Docker
+├── external/              # Submódulos Git
+│   └── catequesis/        # Contenido de recursos de catequesis
+├── scripts/               # Scripts de utilidad (PowerShell y Node.js)
+├── web/                   # Código fuente de la aplicación Next.js
+└── README.md              # Este archivo
 ```
 
-## 📁 Estructura de Datos
+## 📝 Contenido
 
-```
-data/
-├── content/
-│   ├── sessions/          # Archivos .md de sesiones
-│   └── modules.yml        # Configuración de módulos
-└── logs/
-    └── audit.log          # Log de auditoría
-```
+El contenido de la catequesis se estructura en módulos y sesiones. Cada sesión es un fichero Markdown que sigue una plantilla estándar, con secciones para el objetivo, materiales, esquema de la sesión, evaluación y notas para el catequista. Para más detalles, consulta `docs/Plantilla_Sesion_A4.md`.
 
-## 📚 Recursos de Catequesis
+Además, el proyecto incluye un conjunto de fichas de personajes bíblicos que se gestionan como un [submódulo Git](https://git-scm.com/book/en/v2/Git-Tools-Submodules) en `external/catequesis`. Estas fichas están disponibles en la aplicación web y se pueden sincronizar con el comando `npm run sync:catequesis`.
 
-### Estructura del Sistema
-El contenido de catequesis se gestiona como un **submódulo Git** independiente:
-- **Fuente**: `external/catequesis/` (submódulo Git)
-- **Destino**: `web/public/recursos/catequesis/` (copia sincronizada)
-- **Rutas públicas**: 
-  - `/recursos` - Página principal de recursos
-  - `/recursos/catequesis` - Índice general de catequesis
-  - `/recursos/catequesis/indice_general.html` - Listado completo
-  - `/recursos/catequesis/fichas/<personaje>.html` - Fichas individuales
+## 🏁 Primeros Pasos
 
-### Comandos de Sincronización
+### Prerrequisitos
 
-#### Primera vez (configuración inicial)
-```powershell
-# Clonar el submódulo de catequesis
-git submodule update --init --recursive
+*   [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/)
+*   [Git](https://git-scm.com/downloads/)
+*   [Node.js](https://nodejs.org/en/) y [npm](https://www.npmjs.com/) (para desarrollo local y scripts)
 
-# Sincronizar contenido a la web
-npm run sync:catequesis
-```
+### Instalación
 
-#### Actualizar contenido existente
-```powershell
-# Opción 1: Comando directo (recomendado)
-npm run sync:catequesis
+1.  **Clonar el repositorio (incluyendo submódulos):**
+    ```bash
+    git clone --recurse-submodules <URL_DEL_REPOSITORIO>
+    cd Confirmacion
+    ```
 
-# Opción 2: Actualizar submódulo y sincronizar
-git submodule update --remote external/catequesis
-npm run sync:catequesis
+2.  **Configurar variables de entorno:**
+    Crea un fichero `.env` en la raíz del proyecto a partir de `web/.env.example` y ajústalo a tus necesidades.
+    ```bash
+    cp web/.env.example .env
+    ```
+    Asegúrate de cambiar `ADMIN_PASSWORD` y `JWT_SECRET` por valores seguros.
+
+3.  **Sincronizar recursos de catequesis:**
+    Este comando copia el contenido del submódulo `external/catequesis` al directorio `web/public/recursos/catequesis` para que esté disponible en la aplicación web.
+    ```bash
+    npm install
+    npm run sync:catequesis
+    ```
+
+### Ejecutar la Aplicación con Docker
+
+```bash
+docker-compose up -d
 ```
 
-### Despliegue Automático
-El sistema de **CI/CD** se encarga automáticamente de:
-1. **Clonar submódulos**: `git submodule update --init --recursive`
-2. **Sincronizar recursos**: Ejecuta `sync-catequesis.mjs` antes del build
-3. **Construir aplicación**: `next build` con recursos actualizados
+La aplicación estará disponible en `http://localhost:3001`.
 
-Ver configuración en `.github/workflows/ci-security.yml` y `Dockerfile`.
+## 🔧 Uso
 
 ### Desarrollo Local
-Para trabajar con los recursos de catequesis:
-```powershell
-# 1. Sincronizar contenido
-npm run sync:catequesis
 
-# 2. Iniciar servidor de desarrollo
-cd web
-npm run dev
+Para trabajar en la aplicación en un entorno de desarrollo local:
 
-# 3. Verificar recursos en: http://localhost:3000/recursos/catequesis
-```
+1.  **Instalar dependencias:**
+    ```bash
+    cd web
+    npm install
+    ```
 
-**Criterio de éxito**: Cualquier desarrollador puede actualizar el contenido con **1 comando** (`npm run sync:catequesis`) y ver los cambios inmediatamente en el servidor local.
+2.  **Iniciar el servidor de desarrollo:**
+    ```bash
+    npm run dev
+    ```
 
-## 🔒 Backup y Seguridad
+La aplicación estará disponible en `http://localhost:3000`.
 
-### Sistema de Backup
-```powershell
-# Crear backup de todos los datos del párroco
-.\backup.ps1 -Compress
+### Administración
 
-# Restaurar desde backup
-.\restore.ps1 -BackupPath "./backups/backup.zip"
-```
-- **Incluye**: Sesiones, configuración, autenticación del párroco
-- **Documentación completa**: Ver `BACKUP_SISTEMA.md`
-- **Programación automática**: Tareas programadas o cron
+*   **Login:** Accede a `/login` para iniciar sesión como administrador.
+*   **Dashboard:** Una vez autenticado, serás redirigido a `/admin`, donde podrás gestionar las sesiones.
 
-### Backup automático (configurar en NAS)
+### Scripts Útiles
 
-```bash
-# Ejemplo de script de backup diario
-#!/bin/bash
-BACKUP_DIR="/volume1/backups/confirmacion"
-DATE=$(date +%Y%m%d_%H%M%S)
+*   `npm run sync:catequesis`: Sincroniza los recursos de catequesis.
+*   `npm run test`: Ejecuta los tests unitarios y de integración.
+*   `npm run test:e2e`: Ejecuta los tests end-to-end con Playwright.
+*   `npm run hash:admin`: Genera un hash de la contraseña de administrador.
 
-# Crear backup
-tar -czf "$BACKUP_DIR/confirmacion_$DATE.tar.gz" \
-  -C /volume1/docker/confirmacion \
-  data/ .env
+## 📦 Gestión de Contenido
 
-# Mantener solo últimos 30 backups
-find "$BACKUP_DIR" -name "confirmacion_*.tar.gz" -mtime +30 -delete
-```
+El contenido de las sesiones se gestiona a través de ficheros Markdown en el directorio `data/content/sessions`. La estructura de los módulos se define en `data/content/modules.yml`.
 
-### Archivos críticos a respaldar
-- `./data/content/` - Todo el contenido de sesiones
-- `./data/logs/audit.log` - Historial de cambios
-- `.env` - Configuración (sin exponer contraseñas)
+Los recursos de catequesis (fichas de personajes, etc.) se gestionan en un repositorio Git separado y se incluyen como un [submódulo Git](https://git-scm.com/book/en/v2/Git-Tools-Submodules) en `external/catequesis`. Para actualizar estos recursos, ejecuta `npm run sync:catequesis`.
 
-## 🛠️ Mantenimiento
+## 🛡️ Backup y Restauración
 
-### Comandos útiles
+El proyecto incluye scripts de PowerShell para realizar backups y restaurar los datos de la aplicación. Los scripts se encuentran en el directorio `scripts`.
 
-```bash
-# Ver logs en tiempo real
-docker compose logs -f web
+*   **Crear un backup:**
+    ```powershell
+    # Backup básico en carpeta ./backups/
+    .\scripts\backup.ps1
 
-# Reiniciar solo el servicio web
-docker compose restart web
+    # Backup comprimido (recomendado para envío)
+    .\scripts\backup.ps1 -Compress
+    ```
 
-# Actualizar la aplicación
-git pull
-docker compose build --no-cache web
-docker compose up -d
+*   **Restaurar desde un backup:**
+    ```powershell
+    # Desde directorio
+    .\scripts\restore.ps1 -BackupPath "./backups/catequesis_backup_20241214_143022"
 
-# Limpiar contenedores antiguos
-docker system prune -f
-```
+    # Desde archivo ZIP
+    .\scripts\restore.ps1 -BackupPath "./backups/backup.zip"
+    ```
 
-### Monitoreo
+*   **Programar backups automáticos:**
+    Puedes programar backups automáticos utilizando Tareas Programadas en Windows o Cron en Linux/NAS.
 
-- **Health check:** `http://192.168.1.100:8080/api/health`
-- **Logs de aplicación:** `docker compose logs web`
-- **Logs de Gotenberg:** `docker compose logs gotenberg`
+    **Windows (Tarea Programada):**
+    ```powershell
+    schtasks /create /tn "Backup Catequesis" /tr "powershell.exe -ExecutionPolicy Bypass -File C:\Proyectos\Confirmacion\scripts\backup.ps1 -Compress" /sc daily /st 02:00
+    ```
 
-## 🔧 Solución de Problemas
+    **Linux/NAS (Cron):**
+    ```bash
+    0 2 * * * cd /path/to/catequesis && pwsh ./scripts/backup.ps1 -Compress
+    ```
 
-### Error de conectividad Docker Hub
-Si aparece error "failed to resolve source metadata for docker.io/library/node:18":
+Para más detalles, consulta la documentación en `BACKUP_SISTEMA.md` y `BACKUP_SEGURO.md`.
 
-**Opción 1: Usar proxy/VPN**
-```bash
-# Configurar proxy Docker si es necesario
-docker build --build-arg HTTP_PROXY=http://proxy:port .
-```
+## 🔒 Seguridad
 
-**Opción 2: Usar imagen local**
-```bash
-# Descargar imagen manualmente cuando haya conectividad
-docker pull node:18
-# Luego construir normalmente
-docker compose build
-```
+*   **Redes Docker:** El servicio `gotenberg` se ejecuta en una red interna sin acceso desde el exterior para minimizar la superficie de ataque.
+*   **Variables de Entorno:** No incluyas secretos en el código fuente. Utiliza el fichero `.env` para gestionar las variables de entorno.
+*   **CI/CD:** El workflow de integración continua incluye pasos para análisis de seguridad.
+*   **Content Security Policy (CSP):** La aplicación implementa una CSP restrictiva para prevenir ataques XSS. Para más detalles, consulta `web/docs/CSP_Configuration.md`.
 
-**Opción 3: Ejecutar sin Docker**
-```bash
-cd web
-npm install
-npm run build
-npm start
-```
+Para más información sobre la configuración de seguridad, consulta `SECURITY-GOTENBERG.md` y `ci-security-workflow.yml`.
 
-### La aplicación no inicia
-1. Verificar que los puertos 8080 y 3001 están libres
-2. Revisar logs: `docker compose logs web`
-3. Verificar permisos en `./data/`
+## 🛠️ Detalles Técnicos
 
-### Error de autenticación
-1. Verificar `ADMIN_PASSWORD` en `.env`
-2. Limpiar cookies del navegador
-3. Reiniciar el contenedor web
+La aplicación está construida con Next.js y utiliza el App Router. El contenido se carga desde ficheros Markdown y se renderiza en el servidor. La exportación a PDF se realiza con Playwright y Gotenberg, mientras que la exportación a DOCX utiliza la librería `docx`.
 
-### Sesiones no aparecen
-1. Verificar `VISIBILITY_MODE` en `.env`
-2. Comprobar que las sesiones están publicadas (si `VISIBILITY_MODE=publish`)
-3. Verificar que las sesiones han sido editadas (si `VISIBILITY_MODE=edited`)
+Para una descripción técnica más detallada, consulta `docs/Especificaciones_Tecnicas_Completas.md`.
 
-### Error en generación de PDF
-1. Verificar que Gotenberg está funcionando: `docker compose ps`
-2. Revisar logs: `docker compose logs gotenberg`
-3. Verificar `GOTENBERG_URL` en `.env`
+## 🚀 Despliegue
 
-## 📝 Notas de Desarrollo
+El método de despliegue recomendado es a través de Docker Compose. Asegúrate de que el entorno de producción esté correctamente configurado y de que los puertos necesarios estén disponibles.
 
-- **Puerto de desarrollo:** 3000
-- **Puerto de producción:** 8080 (mapeado desde 3000 interno)
-- **Base de datos:** Sistema de archivos (markdown + YAML)
-- **Autenticación:** JWT con contraseña única de admin
-- **PDF:** Generación via Gotenberg (Chromium headless)
+Para más detalles sobre el despliegue en un NAS, consulta `DESPLIEGUE_NAS.md`.
 
----
+## ❓ Solución de Problemas
 
-**Versión:** 1.0.0  
-**Última actualización:** $(date +%Y-%m-%d)
+El `README.md` original contiene una sección detallada de solución de problemas. Si encuentras algún problema, por favor, consúltala.

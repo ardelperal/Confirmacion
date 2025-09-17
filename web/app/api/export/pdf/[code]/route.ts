@@ -145,9 +145,17 @@ export async function GET(
       );
     }
 
+    // Generar nombre de archivo
+    const slug = session.frontMatter.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .substring(0, 50);
+    const filename = `${code.toLowerCase()}_${slug}.pdf`;
+
     // Generar PDF con Gotenberg (seguro)
     const pdfBuffer = await generatePdf(fullHtml, {
-      filename: `${code.toLowerCase()}_session.pdf`,
+      filename: filename,
       marginTop: '20mm',
       marginRight: '20mm',
       marginBottom: '20mm',
@@ -162,14 +170,6 @@ export async function GET(
       isAdmin: isAdmin,
       fileSize: pdfBuffer.length
     });
-    
-    // Generar nombre de archivo
-    const slug = session.frontMatter.title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 50);
-    const filename = `${code.toLowerCase()}_${slug}.pdf`;
 
     // Devolver PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {
