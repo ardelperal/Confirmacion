@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import '../styles/print.css'
 import { Toaster } from 'react-hot-toast'
+import Navigation from '@/components/Navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
+        <Navigation />
         <div className="min-h-screen bg-gray-50">
           {children}
         </div>

@@ -11,19 +11,26 @@ RUN if [ -f package-lock.json ]; then npm ci --no-audit --prefer-offline; \
 # ---------- build ----------
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Instalar git para manejar submódulos
+RUN apk add --no-cache git
+
+# Copiar el repositorio completo desde el contexto raíz
+COPY ../ ../
+
+# Cambiar al directorio web y copiar node_modules
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Copiar scripts y external/catequesis desde el contexto raíz del proyecto
-COPY ../scripts ./scripts
-COPY ../external/catequesis ./external/catequesis
+# Inicializar submódulos git desde la raíz del proyecto
+RUN cd ../ && git submodule update --init --recursive
 
 # Crear estructura de directorios necesaria para el build
 RUN mkdir -p ../data/content
 RUN echo 'modules: []' > ../data/content/modules.yml
 
 # Sincronizar recursos de catequesis antes del build
-RUN node scripts/sync-catequesis.mjs
+RUN cd ../ && npm run sync:catequesis
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --if-present || npx next build

@@ -1,8 +1,8 @@
 # Dockerfile para la aplicación de Confirmación
 FROM node:18 AS base
 
-# Instalar dependencias necesarias
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Instalar dependencias necesarias (incluyendo git para submódulos)
+RUN apt-get update && apt-get install -y curl git && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Instalar dependencias
@@ -13,10 +13,22 @@ RUN npm ci --only=production
 # Construir la aplicación
 FROM base AS builder
 WORKDIR /app
-COPY web/package*.json ./
-RUN npm ci
-COPY web/ .
-RUN npm run build
+
+# Copiar el repositorio completo (incluyendo submódulos)
+COPY . .
+
+# Inicializar submódulos git
+RUN git submodule update --init --recursive
+
+# Instalar dependencias de desarrollo
+COPY web/package*.json ./web/
+RUN cd web && npm ci
+
+# Ejecutar sincronización de catequesis
+RUN npm run sync:catequesis
+
+# Construir la aplicación
+RUN cd web && npm run build
 
 # Imagen de producción
 FROM base AS runner

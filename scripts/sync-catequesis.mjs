@@ -133,6 +133,23 @@ async function main() {
     console.log('\n📋 Copiando archivos...');
     await copyDirectory(SOURCE_DIR, DEST_DIR);
     
+    // Crear index.html en recursos si no existe
+    const recursosDir = path.join(PROJECT_ROOT, 'web', 'public', 'recursos');
+    const indexPath = path.join(recursosDir, 'index.html');
+    
+    try {
+      await fs.access(indexPath);
+      console.log('✓ index.html ya existe en recursos');
+    } catch {
+      console.log('📝 Creando index.html en recursos...');
+      const htmlContent = `<!doctype html><html lang="es"><meta charset="utf-8"><title>Recursos</title>
+<body><h1>Recursos de Catequesis</h1>
+<p><a href="/recursos/catequesis/indice_general.html">Entrar en catequesis</a></p>
+</body></html>`;
+      await fs.writeFile(indexPath, htmlContent, 'utf8');
+      console.log('✓ index.html creado en recursos');
+    }
+    
     console.log('\n✅ Sincronización completada exitosamente');
     
   } catch (error) {
@@ -141,12 +158,10 @@ async function main() {
   }
 }
 
-// Ejecutar solo si es el módulo principal
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error('❌ Error fatal:', error);
-    process.exit(1);
-  });
-}
+// Ejecutar la función main directamente
+main().catch((error) => {
+  console.error('❌ Error fatal:', error);
+  process.exit(1);
+});
 
 export { main as syncCatequesis };
