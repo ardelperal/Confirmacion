@@ -3,6 +3,11 @@ const nextConfig = {
   // Habilitar salida standalone para Docker
   output: 'standalone',
   
+  // Modo estricto de React para mejor desarrollo
+  reactStrictMode: true,
+  
+  // swcMinify is enabled by default in Next.js 13+, no need to specify
+  
   // Paquetes externos para componentes del servidor
   serverExternalPackages: ['playwright'],
   
@@ -47,7 +52,7 @@ const nextConfig = {
     ];
   },
 
-  // Headers de seguridad
+  // Headers de seguridad mejorados
   async headers() {
     const securityHeaders = [
       {
@@ -59,24 +64,24 @@ const nextConfig = {
         value: 'DENY'
       },
       {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff'
+      },
+      {
         key: 'Referrer-Policy',
         value: 'strict-origin-when-cross-origin'
       },
       {
         key: 'Permissions-Policy',
         value: 'geolocation=(), camera=(), microphone=()'
-      },
-      {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff'
       }
     ];
 
-    // Añadir HSTS solo en producción
+    // Añadir HSTS solo en producción con configuración más robusta
     if (process.env.NODE_ENV === 'production') {
       securityHeaders.push({
         key: 'Strict-Transport-Security',
-        value: 'max-age=31536000; includeSubDomains; preload'
+        value: 'max-age=63072000; includeSubDomains; preload'
       });
     }
 
@@ -92,7 +97,7 @@ const nextConfig = {
       },
       {
         key: 'Permissions-Policy',
-        value: 'geolocation=(),camera=(),microphone=()'
+        value: 'geolocation=(), camera=(), microphone=()'
       }
     ];
 

@@ -22,7 +22,7 @@ export default function SessionCard({ session }: SessionCardProps) {
   };
 
   return (
-    <Link href={`/sesion/${session.slug}`} className="block">
+    <Link href={`/sesion/${session.code.toLowerCase()}`} className="block">
       <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-4 sm:p-6 h-full border border-gray-200">
         {/* Header con código, duración y estado */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-2 sm:space-y-0">
@@ -49,18 +49,18 @@ export default function SessionCard({ session }: SessionCardProps) {
         </h3>
 
         {/* Referencias bíblicas */}
-        {session.biblical_references && session.biblical_references.length > 0 && (
+        {session.bible && session.bible.length > 0 && (
           <div className="mb-3">
             <p className="text-sm text-gray-600 mb-1">Referencias bíblicas:</p>
             <div className="flex flex-wrap gap-1">
-              {session.biblical_references.slice(0, 2).map((ref, index) => (
+              {session.bible.slice(0, 2).map((ref, index) => (
                 <span key={index} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
                   {ref}
                 </span>
               ))}
-              {session.biblical_references.length > 2 && (
+              {session.bible.length > 2 && (
                 <span className="text-xs text-gray-500">
-                  +{session.biblical_references.length - 2} más
+                  +{session.bible.length - 2} más
                 </span>
               )}
             </div>
@@ -68,18 +68,18 @@ export default function SessionCard({ session }: SessionCardProps) {
         )}
 
         {/* Referencias del Catecismo */}
-        {session.catechism_references && session.catechism_references.length > 0 && (
+        {session.cic && session.cic.length > 0 && (
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-1">Catecismo:</p>
             <div className="flex flex-wrap gap-1">
-              {session.catechism_references.slice(0, 2).map((ref, index) => (
+              {session.cic.slice(0, 2).map((ref, index) => (
                 <span key={index} className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
                   {ref}
                 </span>
               ))}
-              {session.catechism_references.length > 2 && (
+              {session.cic.length > 2 && (
                 <span className="text-xs text-gray-500">
-                  +{session.catechism_references.length - 2} más
+                  +{session.cic.length - 2} más
                 </span>
               )}
             </div>
@@ -88,7 +88,7 @@ export default function SessionCard({ session }: SessionCardProps) {
 
         {/* Footer con fecha */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-gray-500 mt-auto pt-4 border-t border-gray-100 space-y-1 sm:space-y-0">
-          <span>Actualizada: {formatDate(session.updated_at)}</span>
+          <span>Actualizada: {formatDate(session.updated)}</span>
           <span>v{session.version}</span>
         </div>
       </div>

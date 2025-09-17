@@ -1,51 +1,48 @@
 import DOMPurify from 'isomorphic-dompurify';
 import { JSDOM } from 'jsdom';
+import { toPDFFromHTML, checkGotenbergHealth as checkHealth, GotenbergError, GOTENBERG_CONFIG } from './gotenberg';
 
-// Configuración de seguridad
+// Configuración de seguridad (mantenemos compatibilidad)
 const MAX_HTML_SIZE = 1024 * 1024; // 1MB
-const REQUEST_TIMEOUT = 20000; // 20 segundos
-const GOTENBERG_URL = process.env.GOTENBERG_URL || 'http://gotenberg:3000';
+const REQUEST_TIMEOUT = 20000; // 20 segundos (para compatibilidad, pero el nuevo cliente usa 15s)
 
 // Configuración de DOMPurify para sanitización estricta
 const PURIFY_CONFIG = {
   ALLOWED_TAGS: [
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'p', 'br', 'div', 'span',
-    'strong', 'b', 'em', 'i', 'u',
-    'ul', 'ol', 'li',
-    'table', 'thead', 'tbody', 'tr', 'td', 'th',
-    'blockquote', 'pre', 'code'
+    'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'strong', 'em', 'b', 'i', 'u', 'br', 'hr',
+    'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'td', 'th',
+    'img', 'a', 'blockquote', 'pre', 'code'
   ],
   ALLOWED_ATTR: [
-    'class', 'id', 'style'
+    'class', 'id', 'style', 'href', 'src', 'alt', 'title',
+    'width', 'height', 'colspan', 'rowspan'
   ],
-  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?):\/\/|mailto:|tel:|#)/i,
-  FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'button'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
-  KEEP_CONTENT: true,
-  RETURN_DOM: false,
-  RETURN_DOM_FRAGMENT: false,
-  SANITIZE_DOM: true
+  FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'button'],
+  FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover'],
+  ALLOW_DATA_ATTR: false,
+  SANITIZE_DOM: true,
+  KEEP_CONTENT: true
 };
 
 /**
- * Valida el tamaño del HTML
- * @param html - Contenido HTML a validar
- * @throws Error si excede el límite
+ * Valida el tamaño del HTML antes del procesamiento
+ * @param html Contenido HTML a validar
+ * @throws Error si el HTML excede el tamaño máximo
  */
-export function validateHtmlSize(html: string): void {
+function validateHtmlSize(html: string): void {
   const sizeInBytes = Buffer.byteLength(html, 'utf8');
   if (sizeInBytes > MAX_HTML_SIZE) {
-    throw new Error(`HTML content too large: ${sizeInBytes} bytes (max: ${MAX_HTML_SIZE} bytes)`);
+    throw new Error(`HTML content too large: ${sizeInBytes} bytes (max: ${MAX_HTML_SIZE})`);
   }
 }
 
 /**
- * Sanitiza el HTML usando DOMPurify
- * @param html - HTML a sanitizar
+ * Sanitiza el HTML usando DOMPurify con configuración estricta
+ * @param html Contenido HTML a sanitizar
  * @returns HTML sanitizado
  */
-export function sanitizeHtml(html: string): string {
+function sanitizeHtml(html: string): string {
   try {
     // Crear un DOM virtual para DOMPurify
     const window = new JSDOM('').window;
@@ -66,37 +63,6 @@ export function sanitizeHtml(html: string): string {
       htmlLength: html.length
     });
     throw new Error('Failed to sanitize HTML content');
-  }
-}
-
-/**
- * Realiza una petición HTTP con timeout
- * @param url URL de destino
- * @param options Opciones de fetch
- * @param timeoutMs Timeout en milisegundos
- * @returns Promise con la respuesta
- */
-async function fetchWithTimeout(
-  url: string, 
-  options: RequestInit, 
-  timeoutMs: number = REQUEST_TIMEOUT
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
-    }
-    throw error;
   }
 }
 
@@ -124,45 +90,20 @@ export async function generatePdf(
     // 2. Sanitizar el HTML
     const sanitizedHtml = sanitizeHtml(html);
     
-    // 3. Preparar el formulario para Gotenberg
-    const formData = new FormData();
+    // 3. Usar el nuevo cliente robusto de Gotenberg
+    const pdfUint8Array = await toPDFFromHTML(sanitizedHtml, {
+      marginTop: options.marginTop || '20mm',
+      marginRight: options.marginRight || '20mm',
+      marginBottom: options.marginBottom || '20mm',
+      marginLeft: options.marginLeft || '20mm',
+      format: options.format || 'A4',
+      printBackground: true,
+      preferCSSPageSize: false,
+      timeout: REQUEST_TIMEOUT,
+      retries: 3
+    });
     
-    // Crear archivo HTML temporal
-    const htmlBlob = new Blob([sanitizedHtml], { type: 'text/html' });
-    formData.append('files', htmlBlob, 'index.html');
-    
-    // Configurar opciones del PDF
-    formData.append('marginTop', options.marginTop || '20mm');
-    formData.append('marginRight', options.marginRight || '20mm');
-    formData.append('marginBottom', options.marginBottom || '20mm');
-    formData.append('marginLeft', options.marginLeft || '20mm');
-    formData.append('format', options.format || 'A4');
-    formData.append('printBackground', 'true');
-    formData.append('preferCSSPageSize', 'false');
-    
-    // 4. Realizar petición a Gotenberg con timeout
-    const response = await fetchWithTimeout(
-      `${GOTENBERG_URL}/forms/chromium/convert/html`,
-      {
-        method: 'POST',
-        body: formData
-      },
-      REQUEST_TIMEOUT
-    );
-    
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Gotenberg conversion failed: ${response.status} - ${errorText}`);
-    }
-    
-    // 5. Obtener el PDF como buffer
-    const pdfBuffer = await response.arrayBuffer();
-    
-    if (pdfBuffer.byteLength === 0) {
-      throw new Error('Generated PDF is empty');
-    }
-    
-    return Buffer.from(pdfBuffer);
+    return Buffer.from(pdfUint8Array);
     
   } catch (error) {
     // Log del error sin exponer contenido HTML
@@ -171,6 +112,19 @@ export async function generatePdf(
       htmlLength: html.length,
       timestamp: new Date().toISOString()
     });
+    
+    // Manejar errores específicos del nuevo cliente
+    if (error instanceof GotenbergError) {
+      if (error.message.includes('size') && error.message.includes('exceeds')) {
+        throw new Error('Content too large for PDF generation');
+      }
+      if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+        throw new Error('Request timeout');
+      }
+      if (error.statusCode && error.statusCode >= 400) {
+        throw new Error('PDF generation failed');
+      }
+    }
     
     // Re-lanzar con mensaje genérico para evitar filtración de información
     if (error instanceof Error) {
@@ -190,32 +144,25 @@ export async function generatePdf(
 }
 
 /**
- * Valida que Gotenberg esté disponible
- * @returns Promise<boolean> true si está disponible
+ * Verifica la salud del servicio Gotenberg
+ * @returns Promise que resuelve si Gotenberg está disponible
  */
 export async function checkGotenbergHealth(): Promise<boolean> {
   try {
-    const response = await fetchWithTimeout(
-      `${GOTENBERG_URL}/health`,
-      { method: 'GET' },
-      5000 // 5 segundos para health check
-    );
-    return response.ok;
+    return await checkHealth();
   } catch (error) {
-    console.error('Gotenberg health check failed:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      url: GOTENBERG_URL
-    });
+    console.error('Gotenberg health check failed:', error instanceof Error ? error.message : 'Unknown error');
     return false;
   }
 }
 
 /**
- * Obtiene información sobre los límites de Gotenberg
+ * Límites de generación de PDF para seguridad
  */
 export const PDF_LIMITS = {
   MAX_HTML_SIZE,
   REQUEST_TIMEOUT,
+  GOTENBERG_CONFIG,
   ALLOWED_TAGS: PURIFY_CONFIG.ALLOWED_TAGS,
   FORBIDDEN_TAGS: PURIFY_CONFIG.FORBID_TAGS
 } as const;

@@ -5,7 +5,7 @@ import path from 'path';
 import { generatePdf, checkGotenbergHealth } from '@/lib/pdf';
 import { logDownload, createLogContext } from '@/lib/logging-middleware';
 import { assertValidSlug } from '@/lib/slug';
-import fs from 'fs';
+import fs from 'fs/promises';
 
 export async function GET(
   request: NextRequest,
@@ -37,9 +37,10 @@ export async function GET(
         if (authCookie && authCookie.value && authCookie.value.trim()) {
           try {
             const session = JSON.parse(authCookie.value);
-            isAdmin = session.role === 'admin';
+            isAdmin = session && session.role === 'admin';
           } catch (parseError) {
             console.error('Error parsing auth cookie:', parseError);
+            isAdmin = false;
             // Cookie corrupta, continuar como no admin
           }
         }
@@ -76,7 +77,7 @@ export async function GET(
     const printCssPath = path.join(process.cwd(), 'styles', 'print.css');
     let printCss = '';
     try {
-      printCss = fs.readFileSync(printCssPath, 'utf8');
+      printCss = await fs.readFile(printCssPath, 'utf8');
     } catch (error) {
       console.warn('No se pudo cargar print.css:', error);
     }

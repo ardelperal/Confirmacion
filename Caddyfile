@@ -1,0 +1,158 @@
+# Configuración Caddy para Aplicación de Catequesis
+# Archivo: Caddyfile
+
+# Configuración global
+{
+    # Email para Let's Encrypt
+    email admin@tu-dominio.com
+    
+    # Configuración de protocolos para todos los servidores
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+# Sitio principal con TLS automático
+confirmacion.tu-dominio.com {
+
+    # === HEADERS DE SEGURIDAD ===
+    header {
+        # Prevenir MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        
+        # Prevenir clickjacking
+        X-Frame-Options "DENY"
+        
+        # Control de referrer
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # HSTS (HTTP Strict Transport Security)
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        
+        # CSP básico
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+        
+        # Prevenir XSS
+        X-XSS-Protection "1; mode=block"
+        
+        # Política de permisos
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        
+        # Remover header de servidor
+        -Server
+    }
+
+    # === CONFIGURACIÓN DE COMPRESIÓN ===
+    encode {
+        gzip 6
+        zstd
+        minimum_length 1024
+    }
+
+    # === LÍMITES DE TAMAÑO ===
+    request_body {
+        max_size 10MB
+    }
+
+    # === CONTENIDO ESTÁTICO DE CATEQUESIS ===
+    handle_path /catequesis* {
+        header Cache-Control "public, max-age=86400"
+        root * /app/external/catequesis
+        file_server
+        try_files {path} {path}/ /index.html
+    }
+
+    # === MANEJO DE ARCHIVOS ESTÁTICOS ===
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.ttf *.eot
+    }
+    
+    handle @static {
+        header Cache-Control "public, max-age=31536000, immutable"
+        reverse_proxy web:3001 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # === API ENDPOINTS ===
+    handle /api/* {
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        
+        reverse_proxy web:3001 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+            
+            # Timeouts
+            transport http {
+                dial_timeout 10s
+                response_header_timeout 60s
+            }
+        }
+    }
+
+    # === ADMIN PANEL ===
+    handle /admin* {
+        header {
+            Cache-Control "no-cache, no-store, must-revalidate"
+            X-Robots-Tag "noindex, nofollow"
+        }
+        
+        reverse_proxy web:3001 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # === PROXY PRINCIPAL ===
+    reverse_proxy web:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        
+        # Health check
+        health_uri /api/health
+        health_interval 30s
+        health_timeout 10s
+        
+        # Timeouts
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 60s
+            read_timeout 60s
+            write_timeout 60s
+        }
+    }
+
+    # === LOGGING ===
+    log {
+        output file /var/log/caddy/confirmacion.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json
+        level INFO
+    }
+}
+
+# Configuración para desarrollo local (opcional)
+localhost:8080 {
+    reverse_proxy web:3001
+    
+    log {
+        output stdout
+        level DEBUG
+    }
+}

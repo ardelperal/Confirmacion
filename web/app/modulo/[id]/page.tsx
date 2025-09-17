@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { loadModulesConfig, getAllSessions } from '@/lib/content-loader';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { SessionCard } from '@/components/SessionCard';
+import SessionCard from '@/components/SessionCard';
 
 interface ModulePageProps {
   params: Promise<{

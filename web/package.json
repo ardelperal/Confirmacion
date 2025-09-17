@@ -12,7 +12,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test --reporter=list",
-    "hash:admin": "ts-node --project tsconfig.node.json scripts/gen-admin-hash.ts"
+    "hash:admin": "node scripts/hash-admin.cjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.2.6",

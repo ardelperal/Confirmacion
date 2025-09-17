@@ -1,0 +1,4 @@
+# Configuración separada para redirección www
+www.confirmacion.tu-dominio.com {
+    redir https://confirmacion.tu-dominio.com{uri} permanent
+}

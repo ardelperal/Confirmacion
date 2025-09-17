@@ -1,18 +1,19 @@
-# Dockerfile para la aplicación de Confirmación
-FROM node:18 AS base
+# syntax=docker/dockerfile:1
 
-# Instalar dependencias necesarias (incluyendo git para submódulos)
-RUN apt-get update && apt-get install -y curl git && rm -rf /var/lib/apt/lists/*
+# Stage 1: Instalar dependencias
+FROM node:20-bookworm AS deps
 WORKDIR /app
 
-# Instalar dependencias
-FROM base AS deps
-COPY web/package*.json ./
-RUN npm ci --only=production
+# Copiar archivos de dependencias
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci --only=production && npm cache clean --force
 
-# Construir la aplicación
-FROM base AS builder
+# Stage 2: Construir la aplicación
+FROM node:20-bookworm AS builder
 WORKDIR /app
+
+# Instalar git para submódulos
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 # Copiar el repositorio completo (incluyendo submódulos)
 COPY . .
@@ -20,49 +21,53 @@ COPY . .
 # Inicializar submódulos git
 RUN git submodule update --init --recursive
 
-# Instalar dependencias de desarrollo
-COPY web/package*.json ./web/
+# Instalar todas las dependencias (incluyendo devDependencies)
+COPY web/package.json web/package-lock.json ./web/
 RUN cd web && npm ci
 
 # Ejecutar sincronización de catequesis
 RUN npm run sync:catequesis
 
-# Construir la aplicación
+# Construir la aplicación con output standalone
 RUN cd web && npm run build
 
-# Imagen de producción
-FROM base AS runner
+# Stage 3: Imagen de producción
+FROM node:20-bookworm-slim AS runner
+
+# Variables de entorno
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3001 \
+    HOSTNAME=0.0.0.0
+
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# Instalar curl para healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Crear usuario no-root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN useradd -m -u 10001 nodeuser
 
-# Copiar archivos necesarios
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copiar archivos de la aplicación standalone
+COPY --from=builder --chown=nodeuser:nodeuser /app/web/.next/standalone ./
+COPY --from=builder --chown=nodeuser:nodeuser /app/web/.next/static ./.next/static
+COPY --from=builder --chown=nodeuser:nodeuser /app/web/public ./public
 
-# Crear directorios para contenido y logs
-RUN mkdir -p /app/content /app/logs
-RUN chown -R nextjs:nodejs /app/content /app/logs
+# Copiar datos (se puede montar como volumen en compose para persistencia)
+COPY --from=builder --chown=nodeuser:nodeuser /app/data ./data
 
-# Crear endpoint de health check
-RUN echo '#!/bin/sh\ncurl -f http://localhost:3000/api/health || exit 1' > /usr/local/bin/healthcheck.sh
-RUN chmod +x /usr/local/bin/healthcheck.sh
+# Crear directorios necesarios
+RUN mkdir -p /app/content /app/logs && chown -R nodeuser:nodeuser /app/content /app/logs
 
-USER nextjs
+# Cambiar a usuario no-root
+USER nodeuser
 
-EXPOSE 3000
+# Exponer puerto
+EXPOSE 3001
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+# Healthcheck usando Node.js fetch (disponible en Node 20+)
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD /usr/local/bin/healthcheck.sh
-
+# Comando de inicio
 CMD ["node", "server.js"]

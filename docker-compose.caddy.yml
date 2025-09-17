@@ -1,0 +1,89 @@
+# Docker Compose con Caddy como Reverse Proxy
+# Archivo: docker-compose.caddy.yml
+
+version: '3.8'
+
+services:
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: confirmacion-gotenberg
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: confirmacion-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - GOTENBERG_URL=http://gotenberg:3000
+    env_file:
+      - .env
+    depends_on:
+      - gotenberg
+    volumes:
+      - ./data:/app/data
+      - ./external/catequesis:/app/external/catequesis:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Caddy Reverse Proxy (solo HTTP para nginx upstream)
+  caddy:
+    image: caddy:2.7-alpine
+    container_name: confirmacion-caddy
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    volumes:
+      # Configuración de Caddy
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./external:/app/external:ro
+      
+      # Logs
+      - ./caddy/logs:/var/log/caddy
+    networks:
+      - app-network
+    depends_on:
+      - web
+    environment:
+      - CADDY_INGRESS_NETWORKS=app-network
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "caddy.reverse_proxy={{upstreams 3001}}"
+
+  # Watchtower para actualizaciones automáticas (opcional)
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: confirmacion-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+      - WATCHTOWER_INCLUDE_STOPPED=true
+    profiles:
+      - watchtower
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes: {}

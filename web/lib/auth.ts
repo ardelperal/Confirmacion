@@ -13,18 +13,14 @@ import {
 
 // Configuración desde variables de entorno
 export function getAppConfig(): AppConfig {
-  // Validar que ADMIN_PASSWORD_HASH existe
-  if (!process.env.ADMIN_PASSWORD_HASH) {
-    throw new Error(
-      'ADMIN_PASSWORD_HASH no está configurado. ' +
-      'Genera un hash con: npm run hash:admin'
-    );
-  }
+  // Usar la validación centralizada de variables de entorno
+  const { getValidatedConfig } = require('./env-validation');
+  const config = getValidatedConfig();
 
   return {
-    adminPasswordHash: process.env.ADMIN_PASSWORD_HASH,
-    jwtSecret: process.env.JWT_SECRET || 'default-secret-change-in-production',
-    readOnly: process.env.READ_ONLY === 'true',
+    adminPasswordHash: config.adminPasswordHash,
+    jwtSecret: config.jwtSecret,
+    readOnly: config.readOnly,
     visibilityMode: (process.env.VISIBILITY_MODE as 'publish' | 'edited') || 'publish'
   };
 }

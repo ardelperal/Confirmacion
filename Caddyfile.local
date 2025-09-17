@@ -1,0 +1,22 @@
+# Configuración Caddy para HTTP simple (para nginx upstream)
+# Archivo: Caddyfile.local
+
+# Configuración para puerto 80 - solo HTTP
+:80 {
+    # Proxy reverso a la aplicación Next.js
+    reverse_proxy web:3001
+    
+    # Headers básicos para desarrollo
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        # Permitir que nginx maneje el SSL
+        X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+    }
+    
+    # Logs para debugging
+    log {
+        output stdout
+        level INFO
+    }
+}
