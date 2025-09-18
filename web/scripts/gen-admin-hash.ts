@@ -172,6 +172,6 @@ async function main() {
 }
 
 // Ejecutar solo si es el archivo principal
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }

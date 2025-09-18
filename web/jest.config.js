@@ -38,7 +38,7 @@ const customJestConfig = {
     }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(unified|remark|rehype|unist|vfile|mdast|hast|micromark|decode-named-character-reference|character-entities|property-information|hast-util|mdast-util|micromark-util|parse-entities|zwitch|longest-streak|ccount|markdown-table|repeat-string|trim-lines)/)',
+    'node_modules/(?!(unified|remark|rehype|unist|vfile|mdast|hast|micromark|decode-named-character-reference|character-entities|property-information|hast-util|mdast-util|micromark-util|parse-entities|zwitch|longest-streak|ccount|markdown-table|repeat-string|trim-lines|bail|is-plain-obj|trough|extend)/)',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testTimeout: 10000,

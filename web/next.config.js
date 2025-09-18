@@ -3,6 +3,14 @@ const nextConfig = {
   // Habilitar salida standalone para Docker
   output: 'standalone',
   
+  // Variables de entorno
+  env: {
+    ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH,
+    JWT_SECRET: process.env.JWT_SECRET,
+    READ_ONLY: process.env.READ_ONLY,
+    VISIBILITY_MODE: process.env.VISIBILITY_MODE,
+  },
+  
   // Paquetes externos para componentes del servidor
   serverExternalPackages: ['playwright'],
   
