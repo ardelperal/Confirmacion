@@ -23,8 +23,8 @@ COPY . .
 # Construir la aplicación Next.js
 
 # Preparar contenido mínimo
-RUN mkdir -p ./data/content \
- && echo 'modules: []' > ./data/content/modules.yml
+RUN mkdir -p ../data/content \
+ && echo 'modules: []' > ../data/content/modules.yml
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
@@ -71,4 +71,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
-CMD ["node", "web/server.js"]
+CMD ["node", "app/server.js"]

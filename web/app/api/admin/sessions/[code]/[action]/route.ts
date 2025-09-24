@@ -12,7 +12,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string; action: string }> }
 ) {
-  const { code, action } = await params;
+  const resolvedParams = await params;
+  const { code, action } = resolvedParams;
   
   try {
     // Verificar autenticación

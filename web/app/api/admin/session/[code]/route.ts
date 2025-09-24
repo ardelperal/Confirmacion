@@ -8,7 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const { code } = await params;
+    const resolvedParams = await params;
+    const { code } = resolvedParams;
     
     // Validar slug del código
     try {

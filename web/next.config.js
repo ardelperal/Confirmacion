@@ -2,24 +2,36 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const nextConfig = {
-  // Configuración para desarrollo local (sin output standalone)
-  // output: 'standalone', // Comentado para desarrollo local
 
-  // Asegurar trazado correcto en monorepo (silencia warning de lockfiles)
+const nextConfig = {
+  // Configuración para producción con Docker
+  output: 'standalone',
+
+  // Asegurar trazado correcto en monorepo
   outputFileTracingRoot: path.join(__dirname, '..'),
   
   // Paquetes externos para componentes del servidor
-  serverExternalPackages: ['playwright'],
+  serverExternalPackages: [
+    'playwright',
+    'jsdom',
+    'fuse.js',
+    'marked',
+    '@sparticuz/chromium-min'
+  ],
   
-  // Configuración experimental
-  experimental: {
-    // optimizeCss: true, // Deshabilitado temporalmente para reducir uso de memoria
-  },
-  
-  // Deshabilitar ESLint durante el build para CI
+  // Deshabilitar ESLint durante el build
   eslint: {
     ignoreDuringBuilds: true,
+  },
+
+  // Configuración para evitar pre-renderizado de rutas API
+  generateBuildId: async () => {
+    return 'catequesis-build'
+  },
+
+  // Configuración experimental para evitar problemas de build
+  experimental: {
+    // Removido serverComponentsExternalPackages ya que está deprecated
   },
   
   webpack: (config, { isServer }) => {
@@ -32,33 +44,12 @@ const nextConfig = {
       };
     }
     
-    // Optimizaciones para reducir uso de memoria
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        cacheGroups: {
-          default: {
-            minChunks: 1,
-            priority: -20,
-            reuseExistingChunk: true
-          },
-          vendor: {
-            test: /[\/]node_modules[\/]/,
-            name: 'vendors',
-            priority: -10,
-            chunks: 'all'
-          }
-        }
-      }
-    };
-    
     return config;
   },
   
   // Configuración de imágenes
   images: {
-    unoptimized: true, // Para mejor compatibilidad con exportación
+    unoptimized: true,
     loader: 'custom',
     loaderFile: './lib/imageLoader.js'
   },
@@ -74,72 +65,34 @@ const nextConfig = {
         destination: '/recursos/catequesis/indice_general.html'
       },
       {
-        source: '/recursos/catequesis/fichas/:slug',
-        destination: '/recursos/catequesis/fichas/:slug.html'
+        source: '/recursos/catequesis/:path*',
+        destination: '/recursos/catequesis/:path*'
       }
     ];
   },
 
   // Headers de seguridad
   async headers() {
-    const securityHeaders = [
-      {
-        key: 'Content-Security-Policy',
-        value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-      },
-      {
-        key: 'X-Frame-Options',
-        value: 'DENY'
-      },
-      {
-        key: 'Referrer-Policy',
-        value: 'strict-origin-when-cross-origin'
-      },
-      {
-        key: 'Permissions-Policy',
-        value: 'geolocation=(), camera=(), microphone=()'
-      },
-      {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff'
-      }
-    ];
-
-    // Añadir HSTS solo en producción
-    if (process.env.NODE_ENV === 'production') {
-      securityHeaders.push({
-        key: 'Strict-Transport-Security',
-        value: 'max-age=31536000; includeSubDomains; preload'
-      });
-    }
-
-    // Headers específicos para recursos de catequesis (solo-lectura)
-    const catequesisHeaders = [
-      {
-        key: 'X-Content-Type-Options',
-        value: 'nosniff'
-      },
-      {
-        key: 'Referrer-Policy',
-        value: 'strict-origin-when-cross-origin'
-      },
-      {
-        key: 'Permissions-Policy',
-        value: 'geolocation=(),camera=(),microphone=()'
-      }
-    ];
-
     return [
       {
-        source: '/recursos/catequesis/(.*)',
-        headers: catequesisHeaders
-      },
-      {
         source: '/(.*)',
-        headers: securityHeaders
-      }
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
     ];
-  }
-}
+  },
+};
 
 export default nextConfig;

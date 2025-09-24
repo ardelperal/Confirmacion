@@ -1,22 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/content-loader';
-import path from 'path';
 import { generatePdf, checkPlaywrightHealth } from '@/lib/pdf';
 import { logDownload, createLogContext } from '@/lib/logging-middleware';
 import { assertValidSlug } from '@/lib/slug';
+import { verifyAdminAuth } from '@/lib/auth';
 import fs from 'fs';
+import path from 'path';
+
+// Configuración para evitar pre-renderizado durante el build
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = false;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ code: string }> }
+  context: { params: Promise<{ code: string }> }
 ) {
-  const logContext = createLogContext(request);
-  
+  // Verificación de entorno de build - evitar ejecución durante build
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable during build' },
+      { status: 503 }
+    );
+  }
+
+  // Verificación adicional para request válido
+  if (!request || !request.nextUrl) {
+    return NextResponse.json(
+      { error: 'Invalid request context' },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { code } = await params;
-    const { searchParams } = new URL(request.url);
-    const adminPreview = searchParams.get('adminPreview') === '1';
+    const params = await context.params;
+    const { code } = params;
+    
+    // Manejo seguro de searchParams
+    let adminPreview = false;
+    if (request.nextUrl) {
+      adminPreview = request.nextUrl.searchParams.get('adminPreview') === '1';
+    }
     
     // Validar slug del código
     try {
@@ -29,34 +54,43 @@ export async function GET(
     }
 
     // Verificar permisos para preview de admin
-    let isAdmin = false;
     if (adminPreview) {
       try {
         const cookieStore = await cookies();
         const authCookie = cookieStore.get('auth-session');
         if (authCookie && authCookie.value && authCookie.value.trim()) {
           try {
-            const session = JSON.parse(authCookie.value);
-            isAdmin = session.role === 'admin';
-          } catch (parseError) {
-            console.error('Error parsing auth cookie:', parseError);
-            // Cookie corrupta, continuar como no admin
+            const authResult = await verifyAdminAuth(request);
+            if (!authResult.success) {
+              return NextResponse.json(
+                { error: 'No autorizado' },
+                { status: 401 }
+              );
+            }
+          } catch (authError) {
+            console.error('Error verificando autenticación:', authError);
+            return NextResponse.json(
+              { error: 'Error de autenticación' },
+              { status: 401 }
+            );
           }
+        } else {
+          return NextResponse.json(
+            { error: 'No autorizado' },
+            { status: 401 }
+          );
         }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      }
-      
-      if (!isAdmin) {
+      } catch (cookieError) {
+        console.error('Error accediendo a cookies:', cookieError);
         return NextResponse.json(
-          { error: 'No autorizado para preview de admin' },
-          { status: 403 }
+          { error: 'Error de autenticación' },
+          { status: 401 }
         );
       }
     }
 
     // Cargar sesión
-    const session = await getSession(code, { visibility: isAdmin ? 'admin' : 'public' });
+    const session = await getSession(code.toLowerCase());
     if (!session) {
       return NextResponse.json(
         { error: 'Sesión no encontrada' },
@@ -64,11 +98,21 @@ export async function GET(
       );
     }
 
-    // Verificar estado de publicación (solo para público)
-    if (!isAdmin && session.frontMatter.status !== 'published') {
+    // Verificar si la sesión está publicada (solo para usuarios no admin)
+    if (!adminPreview && session.frontMatter.status !== 'published') {
       return NextResponse.json(
         { error: 'Sesión no disponible' },
         { status: 404 }
+      );
+    }
+
+    // Verificar estado de Playwright
+    const playwrightHealth = await checkPlaywrightHealth();
+    if (!playwrightHealth) {
+      console.error('Playwright no está disponible');
+      return NextResponse.json(
+        { error: 'Servicio de PDF temporalmente no disponible' },
+        { status: 503 }
       );
     }
 
@@ -76,113 +120,70 @@ export async function GET(
     const printCssPath = path.join(process.cwd(), 'styles', 'print.css');
     let printCss = '';
     try {
-      printCss = fs.readFileSync(printCssPath, 'utf8');
+      printCss = fs.readFileSync(printCssPath, 'utf-8');
     } catch (error) {
       console.warn('No se pudo cargar print.css:', error);
     }
 
     // Convertir contenido markdown a HTML
-    const sessionHtml = convertMarkdownToHtml(session.content, session.frontMatter.title, session.frontMatter.code);
+    const htmlContent = convertMarkdownToHtml(session.content);
 
-    // Crear HTML completo para PDF
+    // Construir HTML completo
     const fullHtml = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${session.frontMatter.title} - ${session.frontMatter.code}</title>
-  <style>
-    ${printCss}
-    
-    /* Estilos adicionales para PDF */
-    body {
-      font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 11pt;
-      line-height: 1.4;
-      color: #000;
-      margin: 0;
-      padding: 20mm;
-    }
-    
-    .pagebreak {
-      page-break-after: always;
-    }
-    
-    h1, h2, h3 {
-      break-after: avoid;
-      margin-top: 1.5em;
-      margin-bottom: 0.5em;
-    }
-    
-    p {
-      orphans: 3;
-      widows: 3;
-      margin-bottom: 0.8em;
-    }
-    
-    ul, ol {
-      margin-bottom: 1em;
-    }
-    
-    li {
-      margin-bottom: 0.3em;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${session.frontMatter.title}</title>
+    <style>
+        ${printCss}
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+        h1, h2, h3 { color: #333; }
+        .session-header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .session-meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+        .page-break { page-break-before: always; }
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+    </style>
 </head>
 <body>
-  ${sessionHtml}
+    <div class="session-header">
+        <h1>${session.frontMatter.title}</h1>
+        <div class="session-meta">
+            <p><strong>Código:</strong> ${code.toUpperCase()}</p>
+            <p><strong>Módulo:</strong> ${session.frontMatter.module}</p>
+            ${session.frontMatter.duration ? `<p><strong>Duración:</strong> ${session.frontMatter.duration} min</p>` : ''}
+        </div>
+    </div>
+    <div class="session-content">
+        ${htmlContent}
+    </div>
 </body>
 </html>`;
 
-    // Verificar que Playwright esté disponible
-    const isPlaywrightHealthy = await checkPlaywrightHealth();
-    if (!isPlaywrightHealthy) {
-      console.error('Playwright service is not available');
-      return NextResponse.json(
-        { error: 'Servicio de generación PDF no disponible' },
-        { status: 503 }
-      );
-    }
+    // Generar PDF
+    const pdfBuffer = await generatePdf(fullHtml);
 
-    // Generar PDF con Playwright (seguro)
-    const pdfBuffer = await generatePdf(fullHtml, {
-      filename: `${code.toLowerCase()}_session.pdf`,
-      marginTop: '20mm',
-      marginRight: '20mm',
-      marginBottom: '20mm',
-      marginLeft: '20mm',
-      format: 'A4'
-    });
-    
-    // Log descarga exitosa
-    logDownload('pdf', code, {
-      ...logContext,
-      sessionTitle: session.frontMatter.title,
-      isAdmin: isAdmin,
-      fileSize: pdfBuffer.length
-    });
-    
-    // Generar nombre de archivo
-    const slug = session.frontMatter.title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 50);
-    const filename = `${code.toLowerCase()}_${slug}.pdf`;
+    // Log de descarga
+    const logContext = createLogContext(request);
+    logDownload('pdf', code, logContext);
 
-    // Devolver PDF
+    // Retornar PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {
-      status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'public, max-age=3600'
-      }
+        'Content-Disposition': `attachment; filename="sesion-${code.toLowerCase()}.pdf"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
     });
 
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generando PDF:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -190,34 +191,34 @@ export async function GET(
   }
 }
 
-// Función para convertir markdown a HTML
-function convertMarkdownToHtml(content: string, title: string, code: string): string {
-  // Procesar el contenido markdown básico
-  let html = content
+// Función auxiliar para convertir Markdown a HTML
+function convertMarkdownToHtml(markdown: string): string {
+  if (!markdown) return '';
+  
+  let html = markdown
     // Encabezados
-    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-    // Texto en negrita
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    
+    // Texto en negrita y cursiva
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    // Texto en cursiva
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    
     // Saltos de página
-    .replace(/---pagebreak---/g, '<div class="pagebreak"></div>')
-    // Listas con viñetas
-    .replace(/^- (.*$)/gm, '<li>$1</li>')
-    // Párrafos (líneas que no son encabezados ni listas)
-    .replace(/^(?!<[h|l|d])(.*$)/gm, '<p>$1</p>')
-    // Limpiar párrafos vacíos
-    .replace(/<p>\s*<\/p>/g, '')
-    // Saltos de línea
-    .replace(/\n/g, '');
+    .replace(/---pagebreak---/g, '<div class="page-break"></div>')
+    
+    // Listas
+    .replace(/^\* (.*$)/gim, '<li>$1</li>')
+    .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
+    
+    // Párrafos
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[h|l|d])/gm, '<p>')
+    .replace(/(?<![>])$/gm, '</p>');
 
-  // Envolver listas en ul
-  html = html.replace(/(<li>[\s\S]*?<\/li>)/gm, (match) => {
-    return `<ul>${match}</ul>`;
-  });
-
-  // No agregar título adicional ya que el markdown ya incluye las cabeceras
+  // Envolver listas en etiquetas ul
+  html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+  
   return html;
 }

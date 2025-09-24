@@ -3,6 +3,7 @@ import { getSession } from '@/lib/content-loader';
 import { verifyAdminAuth } from '@/lib/auth';
 import { readContentFile } from '@/lib/fsSafe';
 import { assertValidSlug } from '@/lib/slug';
+import { createLogContext } from '@/lib/logger';
 
 interface RouteParams {
   params: Promise<{
@@ -10,18 +11,24 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
+) {
+  const logContext = createLogContext(request);
+  
   try {
     // Verificar autenticación de admin
-    const authResult = await verifyAdminAuth();
+    const authResult = await verifyAdminAuth(request);
     if (!authResult.success) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: authResult.error || 'No autorizado' },
         { status: 401 }
       );
     }
 
-    const { code } = await params;
+    const resolvedParams = await params;
+    const { code } = resolvedParams;
 
     // Validar slug del código
     try {

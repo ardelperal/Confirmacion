@@ -18,10 +18,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Verificar autenticación de admin
     const authResult = await verifyAdminAuth(request);
     if (!authResult.success) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+      return NextResponse.json(
+        { error: authResult.error || 'No autorizado' },
+        { status: 401 }
+      );
     }
 
-    const { code } = await params;
+    const resolvedParams = await params;
+    const { code } = resolvedParams;
     
     // Validar slug del código original
     try {

@@ -2,15 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/content-loader';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType } from 'docx';
+import { createLogContext } from '@/lib/logging-middleware';
+
+// Configuración para evitar pre-renderizado durante el build
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = false;
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const logContext = createLogContext(request);
+  
   try {
-    const { code } = await params;
-    const { searchParams } = new URL(request.url);
-    const adminPreview = searchParams.get('adminPreview') === '1';
+    const resolvedParams = await params;
+    const { code } = resolvedParams;
+    
+    // Manejo seguro de searchParams para el build
+    let adminPreview = false;
+    try {
+      const { searchParams } = new URL(request.url);
+      adminPreview = searchParams.get('adminPreview') === '1';
+    } catch (error) {
+      // Durante el build, request.url puede no estar disponible
+      adminPreview = false;
+    }
     
     // Validar código (aceptar mayúsculas y minúsculas)
     if (!code || !code.match(/^[A-Fa-f][1-6]$/)) {
@@ -129,7 +146,7 @@ export async function GET(
     const filename = `${code.toLowerCase()}_${slug}.docx`;
 
     // Configurar respuesta con encabezados específicos para Word
-    const response = new NextResponse(buffer, {
+    const response = new NextResponse(buffer as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

@@ -1,19 +1,42 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-The repository is split between automation utilities at the root and the public web app under `web/`. Use `web/app`, `web/components`, `web/lib`, and `web/data` for Next.js routes, shared UI, helpers, and serialized YAML content. Root `scripts/` hosts PowerShell/Node helpers (for example `sync-catequesis.mjs`) that hydrate `data/content` and should be run before building; long-form docs live in `docs/` and security notes in files such as `ci-security-workflow.yml`. External integrations and large assets stay in `external/` and `data/logs`.
+- Root hosts automation utilities and scripts; public web app lives in `web/` (Next.js).
+- Key paths: `web/app` (routes), `web/components` (UI), `web/lib` (helpers), `web/data` (YAML content).
+- Sync/utility scripts in `scripts/` (e.g., `sync-catequesis.mjs`) hydrate `web/data/content`.
+- Long-form docs in `docs/`; security notes like `ci-security-workflow.yml` at root.
+- External integrations in `external/`; large assets and logs in `data/logs`.
 
 ## Build, Test, and Development Commands
-Run `npm install` in both the repository root (for sync scripts) and `web/`. Use `npm run sync:catequesis` from the root after pulling to refresh catequesis content. Inside `web/`, `npm run dev` launches the Next.js server, `npm run build` produces the production bundle, and `npm run start` serves the build for smoke tests.
+- Install deps: `npm install` (root) and `cd web && npm install`.
+- Sync content: from root run `npm run sync:catequesis` after pulling.
+- Local dev: `cd web && npm run dev` (Next.js server).
+- Build: `cd web && npm run build`; serve: `npm run start` for smoke tests.
+- Lint: `cd web && npm run lint`.
 
 ## Coding Style & Naming Conventions
-TypeScript is the default; keep files in `web/` using ES modules with 2-space indentation. React components and server actions use PascalCase filenames (`components/AdminPanel.tsx`), while hooks or utilities are camelCase (`lib/useAuth.ts`). Follow the configured ESLint (`npm run lint`) and Tailwind setup; prefer co-locating component styles in `styles/` or Tailwind classes rather than inline overrides.
+- TypeScript + ES modules; 2-space indentation.
+- Components and server actions: PascalCase (e.g., `components/AdminPanel.tsx`).
+- Hooks/utilities: camelCase (e.g., `lib/useAuth.ts`).
+- Use Tailwind classes or `styles/`; avoid ad‑hoc inline overrides.
+- Follow configured ESLint rules before pushing.
 
 ## Testing Guidelines
-Jest-based unit and integration suites reside in `web/__tests__`, and Playwright E2E specs in `web/tests/e2e`. Run `npm run test` for the fast suite, `npm run test:watch` during feature work, and `npm run test:e2e` against a `npm run start` instance before merging. When adding critical logic (auth, rate limiting, catequesis exports), extend the nearest Jest describe block and capture fixtures under `__tests__/integration`; record failing scenarios in `test-results/` to aid CI triage.
+- Jest unit/integration in `web/__tests__`; prefer `*.test.ts`/`*.test.tsx` names.
+- E2E with Playwright in `web/tests/e2e` (run against `npm run start`).
+- Commands: `cd web && npm run test`, `npm run test:watch`, `npm run test:e2e`.
+- For critical logic (auth, rate limiting, catequesis exports), extend nearest describe block; store fixtures under `__tests__/integration`. Keep failing artifacts under `test-results/`.
 
 ## Commit & Pull Request Guidelines
-Recent history mixes Spanish descriptive messages with conventional prefixes; keep the imperative mood and note the scope (`feat: Anadir exportaciones catequesis`). Reference issues in the footer when relevant (`Refs #123`) and avoid bundling unrelated changes. PRs should outline the problem, the solution, manual test evidence (commands plus screenshots when UI), and confirm that `sync:catequesis`, `lint`, `build`, and all test scripts pass before requesting review.
+- Commits: imperative mood with scope, e.g., `feat: Anadir exportaciones catequesis`. Reference issues in footer (e.g., `Refs #123`). Avoid unrelated bundles.
+- PRs: describe problem and solution, include manual test evidence (commands, screenshots), and confirm `sync:catequesis`, `lint`, `build`, and all tests pass.
 
 ## Security & Configuration Tips
-Never commit secrets; copy `.env.example` to `.env` locally and rely on repository secrets for CI. Trigger `scripts/verify-setup.ps1` (or `.sh` on macOS/Linux) after dependency changes to validate backup tooling. Review `ci-security-workflow.yml` when adjusting auth or storage modules to keep automated hardening steps intact.
+- Never commit secrets. Copy `.env.example` to `.env` locally; use CI secrets.
+- After dependency changes, run `scripts/verify-setup.ps1` (or `.sh`).
+- Review `ci-security-workflow.yml` when modifying auth/storage to keep hardening intact.
+
+## Agent Notes
+- Scope: applies repo-wide; deeper `AGENTS.md` files override locally.
+- Keep changes minimal and aligned with the existing style.
+- Prefer surgical edits and do not introduce unrelated fixes.

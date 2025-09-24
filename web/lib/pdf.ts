@@ -48,23 +48,15 @@ export function validateHtmlSize(html: string): void {
 export function sanitizeHtml(html: string): string {
   try {
     // Crear un DOM virtual para DOMPurify
-    const window = new JSDOM('').window;
+    const dom = new JSDOM('');
+    const window = dom.window;
     
-    // Configurar global para DOMPurify
-    const originalSelf = (global as any).self;
-    (global as any).self = window;
-    
+    // Crear una instancia de DOMPurify usando el window virtual
+    // Esto evita manipular la variable global 'self'
     const purify = DOMPurify.default(window as any);
     
     // Sanitizar el HTML
     const cleanHtml = purify.sanitize(html, PURIFY_CONFIG);
-    
-    // Restaurar el valor original de self
-    if (originalSelf !== undefined) {
-      (global as any).self = originalSelf;
-    } else {
-      delete (global as any).self;
-    }
     
     // Verificar que el resultado no esté vacío (posible ataque)
     if (!cleanHtml || cleanHtml.trim().length === 0) {

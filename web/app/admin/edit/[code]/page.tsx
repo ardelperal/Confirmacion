@@ -6,8 +6,8 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { parseMarkdown } from '@/lib/markdown-parser';
 
-// Importar EasyMDE dinámicamente para evitar problemas de SSR
-const SimpleMDE = dynamic(() => import('react-simplemde-editor'), {
+// Importar MDEditor dinámicamente para evitar problemas de SSR
+const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
   ssr: false,
   loading: () => <div className="h-96 bg-gray-100 animate-pulse rounded"></div>
 });
@@ -403,22 +403,16 @@ export default function SessionEditor() {
           ) : (
             <div className="p-6">
               <h3 className="text-lg font-medium mb-4">Editor Markdown</h3>
-              <SimpleMDE
-                value={content}
-                onChange={setContent}
-                options={{
-                  spellChecker: false,
-                  placeholder: 'Escribe el contenido de la sesión en Markdown...',
-                  toolbar: [
-                    'bold', 'italic', 'heading', '|',
-                    'quote', 'unordered-list', 'ordered-list', '|',
-                    'link', 'table', '|',
-                    'preview', 'side-by-side', 'fullscreen', '|',
-                    'guide'
-                  ],
-                  status: ['lines', 'words', 'cursor']
-                }}
-              />
+              <div data-color-mode="light">
+                <MDEditor
+                  value={content}
+                  onChange={(val) => setContent(val || '')}
+                  preview="edit"
+                  hideToolbar={false}
+                  visibleDragbar={false}
+                  height={500}
+                />
+              </div>
             </div>
           )}
         </div>
