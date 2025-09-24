@@ -354,6 +354,8 @@ function CharacterCard({ name, description, link }: CharacterCardProps) {
       <div className="mt-auto">
         <a 
           href={link}
+          target="_blank"
+          rel="noopener noreferrer"
           className="block w-full px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors text-center"
         >
           Ver ficha →

@@ -330,8 +330,8 @@ export async function sessionExists(sessionCode: string): Promise<boolean> {
  * Verifica si un módulo existe
  */
 export async function moduleExists(moduleCode: string): Promise<boolean> {
-  const module = await getModule(moduleCode);
-  return module !== null;
+  const moduleData = await getModule(moduleCode);
+  return moduleData !== null;
 }
 
 /**

@@ -6,7 +6,7 @@ import { extractTokenFromCookies, verifyAccessToken } from '@/lib/jwt';
 const PROTECTED_ROUTES = ['/admin', '/api/admin'];
 
 // Rutas públicas (siempre accesibles)
-const PUBLIC_ROUTES = [
+const _PUBLIC_ROUTES = [
   '/',
   '/modulo',
   '/sesion',

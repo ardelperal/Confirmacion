@@ -14,18 +14,18 @@ interface ModulePageProps {
 /**
  * Página para mostrar un módulo completo con todas sus sesiones
  */
-export default async function ModulePage({ params }: ModulePageProps) {
+export default async function ModulePage({ params }: any) {
   const { code } = await params;
   const moduleCode = code.toUpperCase();
   
   // Cargar el módulo completo (solo sesiones publicadas)
-  const module = await getModule(moduleCode, { visibility: 'public' });
+  const moduleData = await getModule(moduleCode, { visibility: 'public' });
   
-  if (!module) {
+  if (!moduleData) {
     notFound();
   }
 
-  const { info, sessions } = module;
+  const { info, sessions } = moduleData;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -175,18 +175,18 @@ export async function generateStaticParams() {
 /**
  * Metadatos dinámicos para SEO
  */
-export async function generateMetadata({ params }: ModulePageProps) {
+export async function generateMetadata({ params }: any) {
   const { code } = await params;
-  const module = await getModule(code.toUpperCase());
+  const moduleData = await getModule(code.toUpperCase());
   
-  if (!module) {
+  if (!moduleData) {
     return {
       title: 'Módulo no encontrado'
     };
   }
 
   return {
-    title: `Módulo ${module.info.code}: ${module.info.title} | Catequesis Confirmación`,
-    description: module.info.description,
+    title: `Módulo ${moduleData.info.code}: ${moduleData.info.title} | Catequesis Confirmación`,
+    description: moduleData.info.description,
   };
 }

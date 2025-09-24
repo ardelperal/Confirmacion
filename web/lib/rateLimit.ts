@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 let logger: any;
 try {
   logger = require('./logger').logger;
-} catch (e) {
+} catch (_e) {
   // Logger no disponible (ej. en tests)
   logger = { info: () => {}, warn: () => {}, error: () => {} };
 }
@@ -12,7 +12,7 @@ try {
 export interface RateLimitConfig {
   windowMs: number; // Ventana de tiempo en milisegundos
   max: number; // Máximo número de requests por ventana
-  keyFn?: (req: NextRequest) => string; // Función para generar la clave (por defecto IP)
+  keyFn?: (_req: NextRequest) => string; // Función para generar la clave (por defecto IP)
 }
 
 export interface RateLimitResult {
@@ -23,7 +23,7 @@ export interface RateLimitResult {
 }
 
 export interface RateLimiter {
-  check(req: NextRequest): Promise<RateLimitResult>;
+  check(_req: NextRequest): Promise<RateLimitResult>;
 }
 
 // Implementación en memoria usando Map
@@ -221,11 +221,12 @@ class RedisRateLimiter implements RateLimiter {
 }
 
 // Factory function para crear el rate limiter apropiado
-// Importación condicional de Redis
+// Implementación con Redis (opcional)
 let Redis: any;
 try {
-  Redis = require('ioredis');
-} catch (e) {
+  // Import dinámico para evitar errores de compilación cuando ioredis no está instalado
+  Redis = eval('require')('ioredis');
+} catch (_e) {
   // Redis no disponible - esto es normal si no se instala ioredis
   Redis = null;
 }

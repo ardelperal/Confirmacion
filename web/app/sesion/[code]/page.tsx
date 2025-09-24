@@ -5,13 +5,11 @@ import { DownloadButtons } from '@/components/DownloadButtons';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface SessionPageProps {
-  params: Promise<{
-    code: string;
-  }>;
+  params: { code: string };
 }
 
-export default async function SessionPage({ params }: SessionPageProps) {
-  const { code } = await params;
+export default async function SessionPage({ params }: any) {
+  const { code } = params;
   const sessionCode = code.toUpperCase();
   
   // Intentar cargar la sesión con scope público
@@ -22,7 +20,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
   }
 
   const config = await loadModulesConfig();
-  const module = config.modules.find(m => m.code === session.frontMatter.module);
+  const moduleInfo = config.modules.find(m => m.code === session.frontMatter.module);
   
   const breadcrumbItems = [
     { label: 'Inicio', href: '/' },
@@ -50,7 +48,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
               </h1>
               <p className="text-gray-600">
                 Sesión {sessionCode} • Módulo {session.frontMatter.module}
-                {module && ` • ${module.title}`}
+                {moduleInfo && ` • ${moduleInfo.title}`}
               </p>
             </div>
             
@@ -67,7 +65,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
   );
 }
 
-export async function generateMetadata({ params }: SessionPageProps) {
+export async function generateMetadata({ params }: any) {
   const { code } = await params;
   const sessionCode = code.toUpperCase();
   const session = await getSession(sessionCode, { visibility: 'public' });

@@ -1,23 +1,14 @@
-import { generatePdf, validateHtmlSize, sanitizeHtml, checkGotenbergHealth } from '@/lib/pdf';
+import { generatePdf, validateHtmlSize, sanitizeHtml, checkPlaywrightHealth } from '@/lib/pdf';
 import { JSDOM } from 'jsdom';
 
-// Mock fetch para simular respuestas de Gotenberg
-global.fetch = jest.fn();
-
-// Mock FormData para tests
-class MockFormData {
-  private data: Map<string, any> = new Map();
-  
-  append(key: string, value: any) {
-    this.data.set(key, value);
+// Mock Playwright para simular respuestas
+jest.mock('playwright', () => ({
+  chromium: {
+    launch: jest.fn()
   }
-  
-  get(key: string) {
-    return this.data.get(key) || null;
-  }
-}
+}));
 
-global.FormData = MockFormData as any;
+import { chromium } from 'playwright';
 
 describe('PDF Security Tests', () => {
   beforeEach(() => {
@@ -95,155 +86,141 @@ describe('PDF Security Tests', () => {
     });
   });
 
-  describe('checkGotenbergHealth', () => {
-    it('should return true when Gotenberg is healthy', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        status: 200
-      });
+  describe('checkPlaywrightHealth', () => {
+    it('should return true when Playwright is working', async () => {
+      const mockPage = {
+        setContent: jest.fn().mockResolvedValue(undefined)
+      };
+      
+      const mockBrowser = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      
+      (chromium.launch as jest.Mock).mockResolvedValue(mockBrowser);
 
-      const isHealthy = await checkGotenbergHealth();
+      const isHealthy = await checkPlaywrightHealth();
       expect(isHealthy).toBe(true);
-      expect(fetch).toHaveBeenCalledWith(
-        'http://gotenberg:3000/health',
-        expect.objectContaining({
-          method: 'GET',
-          signal: expect.any(AbortSignal)
-        })
-      );
-    });
-
-    it('should return false when Gotenberg is unreachable', async () => {
-      (fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection refused'));
-
-      const isHealthy = await checkGotenbergHealth();
-      expect(isHealthy).toBe(false);
-    });
-
-    it('should return false when Gotenberg returns error status', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 500
+      expect(chromium.launch).toHaveBeenCalledWith({
+        headless: true,
+        timeout: 5000
       });
+      expect(mockBrowser.close).toHaveBeenCalled();
+    });
 
-      const isHealthy = await checkGotenbergHealth();
+    it('should return false when Playwright fails to launch', async () => {
+      (chromium.launch as jest.Mock).mockRejectedValue(new Error('Launch failed'));
+
+      const isHealthy = await checkPlaywrightHealth();
       expect(isHealthy).toBe(false);
     });
 
-    it('should timeout after 5 seconds', async () => {
-      const abortError = new Error('The operation was aborted');
-      abortError.name = 'AbortError';
-      (fetch as jest.Mock).mockRejectedValueOnce(abortError);
+    it('should return false when page creation fails', async () => {
+      const mockBrowser = {
+        newPage: jest.fn().mockRejectedValue(new Error('Page creation failed')),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      
+      (chromium.launch as jest.Mock).mockResolvedValue(mockBrowser);
 
-      const isHealthy = await checkGotenbergHealth();
+      const isHealthy = await checkPlaywrightHealth();
       expect(isHealthy).toBe(false);
+      expect(mockBrowser.close).toHaveBeenCalled();
     });
   });
 
   describe('generatePdf', () => {
-    const mockPdfBuffer = Buffer.from('fake-pdf-content');
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
 
     it('should generate PDF successfully with valid HTML', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(mockPdfBuffer.buffer)
-      });
-
-      const html = '<html><body><h1>Test Document</h1></body></html>';
-      const result = await generatePdf(html);
-
-      expect(result).toBeInstanceOf(Buffer);
-      expect(fetch).toHaveBeenCalledWith(
-        'http://gotenberg:3000/forms/chromium/convert/html',
-        expect.objectContaining({
-          method: 'POST',
-          signal: expect.any(AbortSignal)
-        })
-      );
-    });
-
-    it('should reject HTML exceeding size limit', async () => {
-      const largeContent = 'x'.repeat(1024 * 1024 + 1);
-      const largeHtml = `<html><body><p>${largeContent}</p></body></html>`;
-
-      await expect(generatePdf(largeHtml)).rejects.toThrow('Content too large for PDF generation');
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it('should sanitize dangerous HTML before sending', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(mockPdfBuffer.buffer)
-      });
-
-      const dangerousHtml = '<html><body><script>alert("xss")</script><h1>Title</h1></body></html>';
-      await generatePdf(dangerousHtml);
-
-      // Verificar que fetch fue llamado (la sanitización ocurre internamente)
-      expect(fetch).toHaveBeenCalledWith(
-        'http://gotenberg:3000/forms/chromium/convert/html',
-        expect.objectContaining({
-          method: 'POST',
-          signal: expect.any(AbortSignal)
-        })
-      );
-    });
-
-    it('should handle Gotenberg errors gracefully', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        text: () => Promise.resolve('Internal server error')
-      });
-
-      const html = '<html><body><h1>Test</h1></body></html>';
-      
-      await expect(generatePdf(html)).rejects.toThrow('PDF generation failed');
-    });
-
-    it('should timeout after 20 seconds', async () => {
-      const abortError = new Error('The operation was aborted');
-      abortError.name = 'AbortError';
-      (fetch as jest.Mock).mockRejectedValueOnce(abortError);
-
-      const html = '<html><body><h1>Test</h1></body></html>';
-      
-      await expect(generatePdf(html)).rejects.toThrow('Request timeout');
-    });
-
-    it('should apply custom options correctly', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(mockPdfBuffer.buffer)
-      });
-
-      const html = '<html><body><h1>Test</h1></body></html>';
-      const options = {
-        filename: 'custom.pdf',
-        marginTop: '30mm',
-        marginLeft: '25mm',
-        format: 'Letter' as const
+      const mockPdf = Buffer.from('PDF content');
+      const mockPage = {
+        setContent: jest.fn().mockResolvedValue(undefined),
+        pdf: jest.fn().mockResolvedValue(mockPdf)
       };
+      
+      const mockBrowser = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      
+      (chromium.launch as jest.Mock).mockResolvedValue(mockBrowser);
 
-      const result = await generatePdf(html, options);
+      const validHtml = '<html><body><h1>Test</h1></body></html>';
+      const result = await generatePdf(validHtml);
 
-      expect(result).toBeInstanceOf(Buffer);
-      expect(fetch).toHaveBeenCalledWith(
-        'http://gotenberg:3000/forms/chromium/convert/html',
-        expect.objectContaining({
-          method: 'POST',
-          signal: expect.any(AbortSignal)
-        })
-      );
+      expect(result).toEqual(mockPdf);
+      expect(chromium.launch).toHaveBeenCalledWith({
+        headless: true,
+        timeout: 30000
+      });
+      expect(mockPage.setContent).toHaveBeenCalledWith('<h1>Test</h1>', {
+        waitUntil: 'networkidle',
+        timeout: 30000
+      });
+      expect(mockPage.pdf).toHaveBeenCalledWith({
+        format: 'A4',
+        margin: {
+          top: '1cm',
+          right: '1cm',
+          bottom: '1cm',
+          left: '1cm'
+        },
+        printBackground: true
+      });
+      expect(mockBrowser.close).toHaveBeenCalled();
+    });
+
+    it('should throw error when HTML is too large', async () => {
+      const largeHtml = 'x'.repeat(5 * 1024 * 1024 + 1); // > 5MB
+      
+      await expect(generatePdf(largeHtml)).rejects.toThrow('Content too large for PDF generation');
+    });
+
+    it('should throw error when browser launch fails', async () => {
+      (chromium.launch as jest.Mock).mockRejectedValue(new Error('Launch failed'));
+
+      const validHtml = '<html><body><h1>Test</h1></body></html>';
+      
+      await expect(generatePdf(validHtml)).rejects.toThrow('PDF generation failed');
+    });
+
+    it('should close browser even when PDF generation fails', async () => {
+      const mockPage = {
+        setContent: jest.fn().mockResolvedValue(undefined),
+        pdf: jest.fn().mockRejectedValue(new Error('PDF generation failed'))
+      };
+      
+      const mockBrowser = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      
+      (chromium.launch as jest.Mock).mockResolvedValue(mockBrowser);
+
+      const validHtml = '<html><body><h1>Test</h1></body></html>';
+      
+      await expect(generatePdf(validHtml)).rejects.toThrow('PDF generation failed');
+      expect(mockBrowser.close).toHaveBeenCalled();
     });
   });
 
   describe('Integration Tests', () => {
     it('should handle complete workflow with dangerous content', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(Buffer.from('safe-pdf').buffer)
-      });
+      const mockPdf = Buffer.from('safe-pdf');
+      const mockPage = {
+        setContent: jest.fn().mockResolvedValue(undefined),
+        pdf: jest.fn().mockResolvedValue(mockPdf)
+      };
+      
+      const mockBrowser = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+      
+      (chromium.launch as jest.Mock).mockResolvedValue(mockBrowser);
 
       const dangerousHtml = `
         <html>
@@ -263,12 +240,22 @@ describe('PDF Security Tests', () => {
 
       expect(result).toBeInstanceOf(Buffer);
       
-      // Verificar que la función fue llamada correctamente
-      expect(fetch).toHaveBeenCalledWith(
-        'http://gotenberg:3000/forms/chromium/convert/html',
+      // Verificar que Playwright fue usado correctamente
+      expect(chromium.launch).toHaveBeenCalledWith({
+        headless: true,
+        timeout: expect.any(Number)
+      });
+      expect(mockPage.setContent).toHaveBeenCalledWith(
+        expect.not.stringContaining('<script>'),
         expect.objectContaining({
-          method: 'POST',
-          signal: expect.any(AbortSignal)
+          waitUntil: 'networkidle',
+          timeout: expect.any(Number)
+        })
+      );
+      expect(mockPage.pdf).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'A4',
+          printBackground: true
         })
       );
     });

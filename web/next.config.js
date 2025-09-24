@@ -1,23 +1,20 @@
 /** @type {import('next').NextConfig} */
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
-  // Habilitar salida standalone para Docker
-  output: 'standalone',
-  
-  // Variables de entorno
-  env: {
-    ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH,
-    JWT_SECRET: process.env.JWT_SECRET,
-    READ_ONLY: process.env.READ_ONLY,
-    VISIBILITY_MODE: process.env.VISIBILITY_MODE,
-  },
+  // Configuración para desarrollo local (sin output standalone)
+  // output: 'standalone', // Comentado para desarrollo local
+
+  // Asegurar trazado correcto en monorepo (silencia warning de lockfiles)
+  outputFileTracingRoot: path.join(__dirname, '..'),
   
   // Paquetes externos para componentes del servidor
   serverExternalPackages: ['playwright'],
   
   // Configuración experimental
   experimental: {
-    // Optimizaciones para producción
-    optimizeCss: true,
+    // optimizeCss: true, // Deshabilitado temporalmente para reducir uso de memoria
   },
   
   // Deshabilitar ESLint durante el build para CI
@@ -25,17 +22,45 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   
-  webpack: (config) => {
-    config.resolve.fallback = {
-      fs: false,
-      path: false,
+  webpack: (config, { isServer }) => {
+    // Configuración para fs y path en el cliente
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
+    
+    // Optimizaciones para reducir uso de memoria
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          default: {
+            minChunks: 1,
+            priority: -20,
+            reuseExistingChunk: true
+          },
+          vendor: {
+            test: /[\/]node_modules[\/]/,
+            name: 'vendors',
+            priority: -10,
+            chunks: 'all'
+          }
+        }
+      }
     };
+    
     return config;
   },
   
   // Configuración de imágenes
   images: {
     unoptimized: true, // Para mejor compatibilidad con exportación
+    loader: 'custom',
+    loaderFile: './lib/imageLoader.js'
   },
   
   // Configuración para manejo de archivos markdown

@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     await fs.mkdir(sessionsDir, { recursive: true });
 
     // Determinar módulo y título por defecto
-    const module = code.charAt(0);
+    const moduleCode = code.charAt(0);
     const moduleNames: Record<string, string> = {
       'A': 'Fundamentos',
       'B': 'Jesucristo',
@@ -151,14 +151,14 @@ export async function POST(request: NextRequest) {
       'F': 'Vida Cristiana'
     };
     
-    const moduleName = moduleNames[module] || 'Módulo';
+    const moduleName = moduleNames[moduleCode] || 'Módulo';
     const title = `${moduleName} - Sesión ${code.charAt(1)}`;
 
     // Generar contenido desde plantilla
     const now = new Date().toISOString();
     const content = DEFAULT_TEMPLATE
       .replace(/{CODE}/g, code)
-      .replace(/{MODULE}/g, module)
+      .replace(/{MODULE}/g, moduleCode)
       .replace(/{TITLE}/g, title)
       .replace(/{EDITED_AT}/g, now);
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/content-loader';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, PageBreak, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType } from 'docx';
 
 export async function GET(
   request: NextRequest,
@@ -66,6 +66,12 @@ export async function GET(
 
     // Crear documento DOCX
     const doc = new Document({
+      creator: "Sistema de Confirmación",
+      title: session.frontMatter.title,
+      description: `Sesión ${session.frontMatter.code}: ${session.frontMatter.title}`,
+      compatibility: {
+        version: 15 // Evitar modo de compatibilidad en Word
+      },
       numbering: {
         config: [
           {
@@ -95,9 +101,9 @@ export async function GET(
               height: '297mm'
             },
             margin: {
-              top: '20mm',
+              top: '25mm',
               right: '20mm',
-              bottom: '20mm',
+              bottom: '25mm',
               left: '20mm'
             }
           }
@@ -109,6 +115,11 @@ export async function GET(
     // Generar buffer del documento
     const buffer = await Packer.toBuffer(doc);
     
+    // Verificar que el buffer no esté vacío
+    if (!buffer || buffer.length === 0) {
+      throw new Error('El documento generado está vacío');
+    }
+    
     // Generar nombre de archivo
     const slug = session.frontMatter.title
       .toLowerCase()
@@ -117,15 +128,21 @@ export async function GET(
       .substring(0, 50);
     const filename = `${code.toLowerCase()}_${slug}.docx`;
 
-    // Devolver DOCX
-    return new NextResponse(new Uint8Array(buffer), {
+    // Configurar respuesta con encabezados específicos para Word
+    const response = new NextResponse(buffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'public, max-age=3600'
+        'Content-Length': buffer.length.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Content-Type-Options': 'nosniff'
       }
     });
+
+    return response;
 
   } catch (error) {
     console.error('Error generating DOCX:', error);
@@ -137,22 +154,9 @@ export async function GET(
 }
 
 function convertContentToDocx(content: string, title: string, code: string): any[] {
-  const elements: (Paragraph | PageBreak)[] = [];
+  const elements: Paragraph[] = [];
   
-  // Título principal
-  elements.push(
-    new Paragraph({
-      text: `Curso de Confirmación (12–13)`,
-      heading: HeadingLevel.HEADING_1,
-      alignment: AlignmentType.CENTER
-    }),
-    new Paragraph({
-      text: `Sesión ${code}: ${title}`,
-      heading: HeadingLevel.HEADING_1,
-      alignment: AlignmentType.CENTER
-    }),
-    new Paragraph({ text: '' }) // Espacio
-  );
+  // No generar cabeceras duplicadas - el contenido Markdown ya las incluye
 
   // Procesar contenido línea por línea
   const lines = content.split('\n');
@@ -167,7 +171,11 @@ function convertContentToDocx(content: string, title: string, code: string): any
     // Salto de página (marcador original o etiqueta HTML)
     if (trimmedLine === '---pagebreak---' || trimmedLine === '<div class="pagebreak"></div>') {
       flushCurrentList();
-      elements.push(new PageBreak());
+      // SOLUCIÓN: Usar Paragraph con pageBreakBefore en lugar de PageBreak directo
+      elements.push(new Paragraph({
+        children: [new TextRun({ text: '', break: 1 })],
+        pageBreakBefore: true
+      }));
       continue;
     }
     
@@ -185,19 +193,48 @@ function convertContentToDocx(content: string, title: string, code: string): any
       const level = headerMatch[1].length;
       const headerText = headerMatch[2];
       let headingLevel;
+      let fontSize = 24; // Tamaño por defecto
+      let color = "000000"; // Negro por defecto
       
       switch (level) {
-        case 1: headingLevel = HeadingLevel.HEADING_1; break;
-        case 2: headingLevel = HeadingLevel.HEADING_2; break;
-        case 3: headingLevel = HeadingLevel.HEADING_3; break;
-        case 4: headingLevel = HeadingLevel.HEADING_4; break;
-        default: headingLevel = HeadingLevel.HEADING_4;
+        case 1: 
+          headingLevel = HeadingLevel.HEADING_1; 
+          fontSize = 32;
+          color = "2E86AB"; // Azul
+          break;
+        case 2: 
+          headingLevel = HeadingLevel.HEADING_2; 
+          fontSize = 28;
+          color = "A23B72"; // Morado
+          break;
+        case 3: 
+          headingLevel = HeadingLevel.HEADING_3; 
+          fontSize = 24;
+          color = "F18F01"; // Naranja
+          break;
+        case 4: 
+          headingLevel = HeadingLevel.HEADING_4; 
+          fontSize = 20;
+          color = "C73E1D"; // Rojo
+          break;
+        default: 
+          headingLevel = HeadingLevel.HEADING_4;
+          fontSize = 20;
       }
       
       elements.push(
         new Paragraph({
-          children: [new TextRun({ text: headerText, bold: true })],
-          heading: headingLevel
+          children: [new TextRun({ 
+            text: headerText, 
+            bold: true,
+            size: fontSize,
+            color: color
+          })],
+          heading: headingLevel,
+          spacing: {
+            before: 240, // Espacio antes del encabezado
+            after: 120   // Espacio después del encabezado
+          }
         })
       );
       continue;
@@ -209,8 +246,21 @@ function convertContentToDocx(content: string, title: string, code: string): any
       const headerText = trimmedLine.replace(/^=== | ===/g, '');
       elements.push(
         new Paragraph({
-          children: [new TextRun({ text: headerText, bold: true })],
-          heading: HeadingLevel.HEADING_2
+          children: [new TextRun({ 
+            text: headerText, 
+            bold: true,
+            size: 28,
+            color: "2E86AB", // Azul
+            underline: {
+              type: UnderlineType.SINGLE,
+              color: "2E86AB"
+            }
+          })],
+          heading: HeadingLevel.HEADING_2,
+          spacing: {
+            before: 240,
+            after: 120
+          }
         })
       );
       continue;
@@ -222,8 +272,17 @@ function convertContentToDocx(content: string, title: string, code: string): any
       const headerText = trimmedLine.replace(/^\d+\)\s/, '');
       elements.push(
         new Paragraph({
-          children: [new TextRun({ text: headerText, bold: true })],
-          heading: HeadingLevel.HEADING_3
+          children: [new TextRun({ 
+            text: headerText, 
+            bold: true,
+            size: 22,
+            color: "A23B72" // Morado
+          })],
+          heading: HeadingLevel.HEADING_3,
+          spacing: {
+            before: 180,
+            after: 90
+          }
         })
       );
       continue;
@@ -240,7 +299,14 @@ function convertContentToDocx(content: string, title: string, code: string): any
       const children = processTextFormatting(`☐ ${checkboxText}`);
       elements.push(new Paragraph({ 
         children,
-        alignment: AlignmentType.JUSTIFIED
+        alignment: AlignmentType.LEFT,
+        spacing: {
+          before: 60,
+          after: 60
+        },
+        indent: {
+          left: 360 // Indentación para las casillas
+        }
       }));
       continue;
     }
@@ -270,11 +336,15 @@ function convertContentToDocx(content: string, title: string, code: string): any
     // Texto normal
     flushCurrentList();
     
-    // Procesar formato de texto (negrita, cursiva, etc.)
+    // Procesar formato de texto (negrita, cursiva, etc.)// Párrafos normales
     const children = processTextFormatting(trimmedLine);
     elements.push(new Paragraph({ 
       children,
-      alignment: AlignmentType.JUSTIFIED
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: {
+        before: 80,
+        after: 80
+      }
     }));
   }
   
@@ -289,7 +359,15 @@ function convertContentToDocx(content: string, title: string, code: string): any
             children,
             bullet: listType === 'bullet' ? { level: item.level } : undefined,
             numbering: listType === 'number' ? { reference: 'default', level: item.level } : undefined,
-            alignment: AlignmentType.JUSTIFIED
+            alignment: AlignmentType.LEFT,
+            spacing: {
+              before: 60,
+              after: 60
+            },
+            indent: {
+              left: 360 + (item.level * 360), // Indentación progresiva para niveles anidados
+              hanging: 180 // Sangría francesa para las viñetas
+            }
           })
         );
       });

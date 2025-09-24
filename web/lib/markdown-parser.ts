@@ -2,8 +2,8 @@ import matter from 'gray-matter';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
-import rehypeRaw from 'rehype-raw';
 import rehypeStringify from 'rehype-stringify';
+import rehypeSanitize from 'rehype-sanitize';
 import { ParsedMarkdown } from '@/types';
 
 /**
@@ -11,8 +11,8 @@ import { ParsedMarkdown } from '@/types';
  */
 const processor = unified()
   .use(remarkParse)
-  .use(remarkRehype, { allowDangerousHtml: true })
-  .use(rehypeRaw)
+  .use(remarkRehype, { allowDangerousHtml: false })
+  .use(rehypeSanitize)
   .use(rehypeStringify);
 
 /**

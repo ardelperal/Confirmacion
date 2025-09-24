@@ -1,5 +1,5 @@
 /* styles/print.css */
-/* Estilos específicos para impresión A4 */
+/* Estilos específicos para impresión A4 - Versión simplificada */
 
 /* Vista de previsualización A4 */
 .print-preview {
@@ -26,7 +26,7 @@
 @media print {
   * {
     -webkit-print-color-adjust: exact !important;
-    color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   body {
@@ -46,7 +46,165 @@
   /* Configuración de página A4 */
   @page {
     size: A4;
-    margin: 20mm;
+    margin: 15mm; /* Reducido de 20mm para más espacio */
+  }
+
+  /* Configuración general */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-size: 11pt; /* Reducido de 12pt */
+    line-height: 1.3; /* Reducido de 1.4 */
+    color: black;
+    background: white;
+  }
+
+  /* Contenedores principales */
+  .container {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Ocultar elementos de navegación */
+  .print\\:hidden,
+  nav,
+  .no-print,
+  button,
+  .breadcrumbs {
+    display: none !important;
+  }
+
+  /* Control de saltos de página */
+  .pagebreak,
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  /* Estilos específicos para sesiones */
+  .session-view {
+    font-size: 11pt;
+    line-height: 1.3;
+  }
+
+  .session-view h1 {
+    font-size: 16pt; /* Reducido de 18pt */
+    margin-bottom: 8pt; /* Reducido */
+    font-weight: bold;
+  }
+
+  .session-view h2 {
+    font-size: 13pt; /* Reducido de 14pt */
+    margin-top: 10pt; /* Reducido */
+    margin-bottom: 6pt; /* Reducido */
+    font-weight: bold;
+  }
+
+  .session-view h3 {
+    font-size: 12pt;
+    margin-top: 8pt; /* Reducido */
+    margin-bottom: 4pt; /* Reducido */
+    font-weight: bold;
+  }
+
+  .session-view h4 {
+    font-size: 11pt;
+    margin-top: 6pt;
+    margin-bottom: 3pt;
+    font-weight: bold;
+  }
+
+  .session-view p {
+    margin-bottom: 4pt; /* Reducido */
+  }
+
+  .session-view ul, .session-view ol {
+    margin-bottom: 6pt; /* Reducido */
+    padding-left: 15pt;
+  }
+
+  .session-view li {
+    margin-bottom: 2pt; /* Reducido */
+  }
+
+  /* Imágenes */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Tablas */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    font-size: 10pt;
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 3pt;
+    text-align: left;
+  }
+
+  /* Enlaces */
+  a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+
+  /* Espaciado compacto para maximizar contenido */
+  .prose {
+    max-width: none !important;
+  }
+
+  .prose p {
+    margin-top: 0;
+    margin-bottom: 4pt;
+  }
+
+  .prose ul, .prose ol {
+    margin-top: 0;
+    margin-bottom: 6pt;
+  }
+
+  .prose li {
+    margin-top: 0;
+    margin-bottom: 2pt;
+  }
+
+  .prose blockquote {
+    margin: 6pt 0;
+    padding-left: 10pt;
+    border-left: 2pt solid #ccc;
+  }
+
+  /* Ocultar cabeceras duplicadas del componente */
+  .session-view header {
+    display: none !important;
+  }
+
+  /* Footer minimalista */
+  .session-view footer {
+    position: fixed;
+    bottom: 10mm;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 8pt;
   }
 
   /* Evitar cortes en encabezados */
@@ -97,145 +255,94 @@
     page-break-before: always;
   }
 
-  /* Tipografía optimizada para impresión */
-  h1, h2, h3, h4, h5, h6 {
-    page-break-after: avoid;
-    font-weight: bold;
-  }
-
-  h1 {
-    font-size: 18pt;
-    margin-bottom: 12pt;
-  }
-
-  h2 {
-    font-size: 16pt;
-    margin-bottom: 10pt;
-  }
-
-  h3 {
-    font-size: 14pt;
-    margin-bottom: 8pt;
-  }
-
-  p {
-    font-size: 11pt;
-    line-height: 1.4;
-    margin-bottom: 6pt;
-    orphans: 3;
-    widows: 3;
-  }
-
-  ul, ol {
-    font-size: 11pt;
-    line-height: 1.4;
-  }
-
-  li {
-    margin-bottom: 3pt;
-  }
-
-  /* Enlaces en impresión */
-  a {
-    color: black;
-    text-decoration: none;
-  }
-
-  a[href]:after {
-    content: " (" attr(href) ")";
-    font-size: 9pt;
-    color: #666;
-  }
-  
-  /* Listas y elementos estructurales */
-  ul, ol {
-    page-break-inside: avoid;
-  }
-  
-  /* Bloques de contenido importantes */
-  .session-section {
-    page-break-inside: avoid;
-    margin-bottom: 0.5cm;
-  }
-}
-
-/* Estilos para la vista web que simula A4 */
-.session-content {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-  background: white;
-  min-height: 100vh;
-}
-
-.session-content.print-mode {
-  width: 210mm;
-  min-height: 297mm;
-  padding: 20mm;
-  margin: 2rem auto;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  background: white;
-}
-
-/* Estilos para elementos específicos de la sesión */
-.session-header {
-  border-bottom: 2px solid #333;
-  padding-bottom: 1rem;
-  margin-bottom: 2rem;
-}
-
-.session-section {
-  margin-bottom: 2rem;
-}
-
-.session-section h3 {
-  color: #2563eb;
-  border-left: 4px solid #2563eb;
-  padding-left: 1rem;
-  margin-bottom: 1rem;
-}
-
-.time-indicator {
-  background: #f3f4f6;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.bible-quote {
-  background: #fef3c7;
-  border-left: 4px solid #f59e0b;
-  padding: 1rem;
-  margin: 1rem 0;
-  font-style: italic;
-}
-
-.activity-steps {
-  background: #f0f9ff;
-  border: 1px solid #0ea5e9;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin: 1rem 0;
-}
-
-.commitment-box {
-  background: #f0fdf4;
-  border: 2px solid #22c55e;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin: 1rem 0;
-}
-
-/* Responsive para pantallas pequeñas */
-@media (max-width: 768px) {
-  .session-content {
-    padding: 1rem;
-  }
-  
-  .session-content.print-mode {
+  /* Estilos para fichas de catequesis */
+  .sheet {
     width: 100%;
-    margin: 1rem;
-    padding: 1rem;
+    min-height: 297mm;
+    padding: 20mm;
+    box-sizing: border-box;
+    break-after: page;
+  }
+
+  .sheet:last-child {
+    break-after: auto;
+  }
+
+  /* Encabezados de fichas */
+  .sheet header {
+    margin-bottom: 20px;
+    break-after: avoid;
+  }
+
+  .sheet header h1 {
+    font-size: 18pt;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .sheet header .bajada {
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  /* Secciones de contenido */
+  .sheet section {
+    margin-bottom: 15px;
+    break-inside: avoid;
+  }
+
+  .sheet section h2 {
+    font-size: 14pt;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 2px;
+  }
+
+  /* Citas bíblicas */
+  .sheet blockquote {
+    font-style: italic;
+    margin: 10px 0;
+    padding: 10px;
+    border-left: 3px solid #666;
+    background-color: #f9f9f9;
+  }
+
+  /* Actividades */
+  .sheet ol, .sheet ul {
+    margin: 10px 0;
+    padding-left: 20px;
+  }
+
+  /* Líneas para escribir */
+  .sheet p:has-text("_") {
+    border-bottom: 1px solid #333;
+    min-height: 20px;
+  }
+
+  /* Imágenes */
+  .sheet img {
+    max-width: 100%;
+    height: auto;
+    break-inside: avoid;
+  }
+
+  .sheet figure {
+    text-align: center;
+    margin: 15px 0;
+    break-inside: avoid;
+  }
+}
+
+/* Estilos para pantalla */
+@media screen {
+  .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 20px auto;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20mm;
+    box-sizing: border-box;
   }
 }

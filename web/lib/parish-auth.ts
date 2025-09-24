@@ -28,8 +28,8 @@ export async function getParishAuth(): Promise<ParishAuth> {
       const data = fs.readFileSync(AUTH_FILE_PATH, 'utf8');
       return JSON.parse(data);
     }
-  } catch (error) {
-    console.error('Error reading parish auth file:', error);
+  } catch (_error) {
+    console.error('Error reading parish auth file:', _error);
   }
   
   // Si no existe el archivo o hay error, crear configuración por defecto
@@ -49,8 +49,8 @@ export async function saveParishAuth(auth: ParishAuth): Promise<void> {
   
   try {
     fs.writeFileSync(AUTH_FILE_PATH, JSON.stringify(auth, null, 2));
-  } catch (error) {
-    console.error('Error saving parish auth file:', error);
+  } catch (_error) {
+    console.error('Error saving parish auth file:', _error);
     throw new Error('No se pudo guardar la configuración de autenticación');
   }
 }
@@ -60,8 +60,8 @@ export async function verifyParishPassword(password: string): Promise<boolean> {
   try {
     const auth = await getParishAuth();
     return await bcrypt.compare(password, auth.hashedPassword);
-  } catch (error) {
-    console.error('Error verifying parish password:', error);
+  } catch (_error) {
+    console.error('Error verifying parish password:', _error);
     return false;
   }
 }
@@ -82,8 +82,8 @@ export async function changeParishPassword(newPassword: string): Promise<boolean
     
     await saveParishAuth(auth);
     return true;
-  } catch (error) {
-    console.error('Error changing parish password:', error);
+  } catch (_error) {
+    console.error('Error changing parish password:', _error);
     return false;
   }
 }
@@ -93,7 +93,7 @@ export async function isUsingDefaultPassword(): Promise<boolean> {
   try {
     const auth = await getParishAuth();
     return auth.isDefault;
-  } catch (error) {
+  } catch (_error) {
     return true;
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/content-loader';
 import path from 'path';
-import { generatePdf, checkGotenbergHealth } from '@/lib/pdf';
+import { generatePdf, checkPlaywrightHealth } from '@/lib/pdf';
 import { logDownload, createLogContext } from '@/lib/logging-middleware';
 import { assertValidSlug } from '@/lib/slug';
 import fs from 'fs';
@@ -135,17 +135,17 @@ export async function GET(
 </body>
 </html>`;
 
-    // Verificar que Gotenberg esté disponible
-    const isGotenbergHealthy = await checkGotenbergHealth();
-    if (!isGotenbergHealthy) {
-      console.error('Gotenberg service is not available');
+    // Verificar que Playwright esté disponible
+    const isPlaywrightHealthy = await checkPlaywrightHealth();
+    if (!isPlaywrightHealthy) {
+      console.error('Playwright service is not available');
       return NextResponse.json(
         { error: 'Servicio de generación PDF no disponible' },
         { status: 503 }
       );
     }
 
-    // Generar PDF con Gotenberg (seguro)
+    // Generar PDF con Playwright (seguro)
     const pdfBuffer = await generatePdf(fullHtml, {
       filename: `${code.toLowerCase()}_session.pdf`,
       marginTop: '20mm',
@@ -218,13 +218,6 @@ function convertMarkdownToHtml(content: string, title: string, code: string): st
     return `<ul>${match}</ul>`;
   });
 
-  // Agregar título principal
-  const titleHtml = `
-    <div class="session-header">
-      <h1>Curso de Confirmación (12–13)</h1>
-      <h2>Sesión ${code.toUpperCase()}: ${title}</h2>
-    </div>
-  `;
-
-  return titleHtml + html;
+  // No agregar título adicional ya que el markdown ya incluye las cabeceras
+  return html;
 }

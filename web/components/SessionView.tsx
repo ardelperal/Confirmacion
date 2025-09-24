@@ -8,8 +8,8 @@ interface SessionViewProps {
 export function SessionView({ session, className = '' }: SessionViewProps) {
   return (
     <article className={`session-view ${className}`}>
-      {/* Encabezado de la sesión */}
-      <header className="mb-8 print:mb-6">
+      {/* Encabezado de la sesión - oculto en impresión para evitar duplicación */}
+      <header className="mb-8 print:hidden">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -109,15 +109,10 @@ export function SessionView({ session, className = '' }: SessionViewProps) {
         dangerouslySetInnerHTML={{ __html: session.htmlContent || '' }}
       />
       
-      {/* Footer para impresión */}
-      <footer className="hidden print:block mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600">
-        <div className="flex justify-between items-center">
-          <div>
-            Curso de Confirmación • Sesión {session.frontMatter.code}: {session.frontMatter.title}
-          </div>
-          <div>
-            Página {/* Se puede añadir numeración de página con CSS */}
-          </div>
+      {/* Footer para impresión - simplificado para evitar duplicación */}
+      <footer className="hidden print:block mt-4 text-xs text-gray-600">
+        <div className="text-center">
+          Sesión {session.frontMatter.code}
         </div>
       </footer>
     </article>

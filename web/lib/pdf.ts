@@ -1,10 +1,10 @@
-import DOMPurify from 'isomorphic-dompurify';
+import * as DOMPurify from 'isomorphic-dompurify';
 import { JSDOM } from 'jsdom';
+import { chromium } from 'playwright';
 
 // Configuración de seguridad
 const MAX_HTML_SIZE = 1024 * 1024; // 1MB
-const REQUEST_TIMEOUT = 20000; // 20 segundos
-const GOTENBERG_URL = process.env.GOTENBERG_URL || 'http://gotenberg:3000';
+const PLAYWRIGHT_TIMEOUT = 30000; // 30 segundos para operaciones de Playwright
 
 // Configuración de DOMPurify para sanitización estricta
 const PURIFY_CONFIG = {
@@ -49,10 +49,22 @@ export function sanitizeHtml(html: string): string {
   try {
     // Crear un DOM virtual para DOMPurify
     const window = new JSDOM('').window;
-    const purify = DOMPurify(window as any);
+    
+    // Configurar global para DOMPurify
+    const originalSelf = (global as any).self;
+    (global as any).self = window;
+    
+    const purify = DOMPurify.default(window as any);
     
     // Sanitizar el HTML
     const cleanHtml = purify.sanitize(html, PURIFY_CONFIG);
+    
+    // Restaurar el valor original de self
+    if (originalSelf !== undefined) {
+      (global as any).self = originalSelf;
+    } else {
+      delete (global as any).self;
+    }
     
     // Verificar que el resultado no esté vacío (posible ataque)
     if (!cleanHtml || cleanHtml.trim().length === 0) {
@@ -70,38 +82,7 @@ export function sanitizeHtml(html: string): string {
 }
 
 /**
- * Realiza una petición HTTP con timeout
- * @param url URL de destino
- * @param options Opciones de fetch
- * @param timeoutMs Timeout en milisegundos
- * @returns Promise con la respuesta
- */
-async function fetchWithTimeout(
-  url: string, 
-  options: RequestInit, 
-  timeoutMs: number = REQUEST_TIMEOUT
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
-    }
-    throw error;
-  }
-}
-
-/**
- * Genera un PDF usando Gotenberg con validación y sanitización
+ * Genera un PDF usando Playwright con validación y sanitización
  * @param html Contenido HTML a convertir
  * @param options Opciones de generación del PDF
  * @returns Buffer del PDF generado
@@ -117,6 +98,8 @@ export async function generatePdf(
     format?: string;
   } = {}
 ): Promise<Buffer> {
+  let browser;
+  
   try {
     // 1. Validar tamaño del HTML
     validateHtmlSize(html);
@@ -124,45 +107,37 @@ export async function generatePdf(
     // 2. Sanitizar el HTML
     const sanitizedHtml = sanitizeHtml(html);
     
-    // 3. Preparar el formulario para Gotenberg
-    const formData = new FormData();
+    // 3. Inicializar Playwright
+    browser = await chromium.launch({
+      headless: true,
+      timeout: PLAYWRIGHT_TIMEOUT
+    });
     
-    // Crear archivo HTML temporal
-    const htmlBlob = new Blob([sanitizedHtml], { type: 'text/html' });
-    formData.append('files', htmlBlob, 'index.html');
+    const page = await browser.newPage();
     
-    // Configurar opciones del PDF
-    formData.append('marginTop', options.marginTop || '20mm');
-    formData.append('marginRight', options.marginRight || '20mm');
-    formData.append('marginBottom', options.marginBottom || '20mm');
-    formData.append('marginLeft', options.marginLeft || '20mm');
-    formData.append('format', options.format || 'A4');
-    formData.append('printBackground', 'true');
-    formData.append('preferCSSPageSize', 'false');
+    // 4. Configurar el contenido HTML
+    await page.setContent(sanitizedHtml, {
+      waitUntil: 'networkidle',
+      timeout: PLAYWRIGHT_TIMEOUT
+    });
     
-    // 4. Realizar petición a Gotenberg con timeout
-    const response = await fetchWithTimeout(
-      `${GOTENBERG_URL}/forms/chromium/convert/html`,
-      {
-        method: 'POST',
-        body: formData
+    // 5. Generar el PDF con las opciones especificadas
+    const pdfBuffer = await page.pdf({
+      format: (options.format as any) || 'A4',
+      margin: {
+        top: options.marginTop || '1cm',
+        right: options.marginRight || '1cm',
+        bottom: options.marginBottom || '1cm',
+        left: options.marginLeft || '1cm'
       },
-      REQUEST_TIMEOUT
-    );
+      printBackground: true
+    });
     
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Gotenberg conversion failed: ${response.status} - ${errorText}`);
-    }
-    
-    // 5. Obtener el PDF como buffer
-    const pdfBuffer = await response.arrayBuffer();
-    
-    if (pdfBuffer.byteLength === 0) {
+    if (pdfBuffer.length === 0) {
       throw new Error('Generated PDF is empty');
     }
     
-    return Buffer.from(pdfBuffer);
+    return pdfBuffer;
     
   } catch (error) {
     // Log del error sin exponer contenido HTML
@@ -177,7 +152,7 @@ export async function generatePdf(
       if (error.message.includes('too large')) {
         throw new Error('Content too large for PDF generation');
       }
-      if (error.message.includes('timeout') || error.name === 'AbortError') {
+      if (error.message.includes('timeout') || error.name === 'TimeoutError') {
         throw new Error('Request timeout');
       }
       if (error.message.includes('sanitize')) {
@@ -186,36 +161,49 @@ export async function generatePdf(
     }
     
     throw new Error('PDF generation failed');
+  } finally {
+    // 6. Cerrar el navegador
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
 /**
- * Valida que Gotenberg esté disponible
+ * Valida que Playwright esté disponible
  * @returns Promise<boolean> true si está disponible
  */
-export async function checkGotenbergHealth(): Promise<boolean> {
+export async function checkPlaywrightHealth(): Promise<boolean> {
+  let browser;
+  
   try {
-    const response = await fetchWithTimeout(
-      `${GOTENBERG_URL}/health`,
-      { method: 'GET' },
-      5000 // 5 segundos para health check
-    );
-    return response.ok;
+    browser = await chromium.launch({
+      headless: true,
+      timeout: 5000 // 5 segundos para health check
+    });
+    
+    const page = await browser.newPage();
+    await page.setContent('<html><body><h1>Test</h1></body></html>');
+    
+    return true;
   } catch (error) {
-    console.error('Gotenberg health check failed:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      url: GOTENBERG_URL
+    console.error('Playwright health check failed:', {
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
     return false;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
 /**
- * Obtiene información sobre los límites de Gotenberg
+ * Obtiene información sobre los límites de PDF
  */
 export const PDF_LIMITS = {
   MAX_HTML_SIZE,
-  REQUEST_TIMEOUT,
+  PLAYWRIGHT_TIMEOUT,
   ALLOWED_TAGS: PURIFY_CONFIG.ALLOWED_TAGS,
   FORBIDDEN_TAGS: PURIFY_CONFIG.FORBID_TAGS
 } as const;

@@ -17,12 +17,8 @@ interface PreviewToken {
 }
 
 interface PreviewPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-  searchParams: Promise<{
-    token?: string;
-  }>;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ token?: string }>;
 }
 
 const TOKENS_DIR = join(process.cwd(), 'data', 'preview-tokens');
@@ -82,7 +78,7 @@ async function logTokenConsumption(sessionCode: string, token: string) {
   console.log('AUDIT:', JSON.stringify(logEntry));
 }
 
-export default async function PreviewPage({ params, searchParams }: PreviewPageProps) {
+export default async function PreviewPage({ params, searchParams }: any) {
   const { slug } = await params;
   const { token } = await searchParams;
   const sessionCode = slug.toUpperCase();
@@ -106,7 +102,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   }
 
   const config = await loadModulesConfig();
-  const module = config.modules.find(m => m.code === session.frontMatter.module);
+  const moduleInfo = config.modules.find(m => m.code === session.frontMatter.module);
   
   const breadcrumbItems = [
     { label: 'Preview', href: '#' },
@@ -151,7 +147,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
               </h1>
               <p className="text-gray-600">
                 Sesión {sessionCode} • Módulo {session.frontMatter.module}
-                {module && ` • ${module.title}`}
+                {moduleInfo && ` • ${moduleInfo.title}`}
                 <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
                   {session.frontMatter.status === 'published' ? 'Publicada' : 'Borrador'}
                 </span>
@@ -173,7 +169,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   );
 }
 
-export async function generateMetadata({ params, searchParams }: PreviewPageProps) {
+export async function generateMetadata({ params, searchParams }: any) {
   const { slug } = await params;
   const { token } = await searchParams;
   const sessionCode = slug.toUpperCase();

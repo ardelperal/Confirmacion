@@ -10,7 +10,7 @@ interface ModulePageProps {
   }>;
 }
 
-export default async function ModulePage({ params }: ModulePageProps) {
+export default async function ModulePage({ params }: any) {
   const { id } = await params;
   const moduleCode = id.toUpperCase();
   
@@ -19,8 +19,8 @@ export default async function ModulePage({ params }: ModulePageProps) {
     getAllSessions({ visibility: 'public' })
   ]);
 
-  const module = config.modules.find(m => m.code === moduleCode);
-  if (!module) {
+  const moduleInfo = config.modules.find(m => m.code === moduleCode);
+  if (!moduleInfo) {
     notFound();
   }
 
@@ -56,11 +56,11 @@ export default async function ModulePage({ params }: ModulePageProps) {
           
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              {module.title}
+              {moduleInfo.title}
             </h2>
-            {module.description && (
+            {moduleInfo.description && (
               <p className="text-gray-600 leading-relaxed">
-                {module.description}
+                {moduleInfo.description}
               </p>
             )}
           </div>
@@ -101,9 +101,9 @@ export default async function ModulePage({ params }: ModulePageProps) {
         {/* Navegación entre módulos */}
         <div className="mt-16 flex justify-between items-center">
           <div>
-            {module.order > 1 && (
+            {moduleInfo.order > 1 && (
               <Link
-                href={`/modulo/${config.modules.find(m => m.order === module.order - 1)?.code.toLowerCase()}`}
+                href={`/modulo/${config.modules.find(m => m.order === moduleInfo.order - 1)?.code.toLowerCase()}`}
                 className="inline-flex items-center px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 ← Módulo anterior
@@ -111,9 +111,9 @@ export default async function ModulePage({ params }: ModulePageProps) {
             )}
           </div>
           <div>
-            {module.order < config.modules.length && (
+            {moduleInfo.order < config.modules.length && (
               <Link
-                href={`/modulo/${config.modules.find(m => m.order === module.order + 1)?.code.toLowerCase()}`}
+                href={`/modulo/${config.modules.find(m => m.order === moduleInfo.order + 1)?.code.toLowerCase()}`}
                 className="inline-flex items-center px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 Módulo siguiente →
@@ -133,11 +133,11 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: ModulePageProps) {
-  const { id } = await params;
+export async function generateMetadata({ params }: any) {
+  const { id } = params;
   const moduleCode = id.toUpperCase();
   const config = await loadModulesConfig();
-  const module = config.modules.find(m => m.code === moduleCode);
+  const moduleInfo = config.modules.find(m => m.code === moduleCode);
   
   if (!module) {
     return {
@@ -146,7 +146,7 @@ export async function generateMetadata({ params }: ModulePageProps) {
   }
 
   return {
-    title: `Módulo ${moduleCode}: ${module.title} - Curso de Confirmación`,
-    description: module.description || `Sesiones del módulo ${moduleCode} del curso de Confirmación para jóvenes de 12-13 años.`,
+    title: `Módulo ${moduleCode}: ${moduleInfo!.title} - Curso de Confirmación`,
+    description: moduleInfo!.description || `Sesiones del módulo ${moduleCode} del curso de Confirmación para jóvenes de 12-13 años.`,
   };
 }
