@@ -8,7 +8,7 @@ services:
     ports:
       - "3001:3000"
     volumes:
-      - ./data/content:/app/content:ro
+      - ./data/content:/app/content
       - ./data/auth:/app/data:rw
       - ./data/logs:/app/data/logs:rw
     restart: always
@@ -40,3 +40,4 @@ networks:
     driver: bridge
 
 volumes: {}
+

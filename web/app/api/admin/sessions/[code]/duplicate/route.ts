@@ -106,9 +106,7 @@ editedAt: "${newFrontMatter.editedAt}"
     const fullContent = yamlFrontMatter + originalSession.content;
 
     // Guardar el archivo usando helper seguro
-    const newFilePath = `sessions/${newSessionCode}.md`;
-    
-    await writeContentFile(newFilePath, fullContent);
+    await writeContentFile(fullContent, 'sessions', `${newSessionCode}.md`);
 
     return NextResponse.json({
       success: true,

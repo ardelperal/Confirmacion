@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getContentRoot, getDataRoot } from '@/lib/fsSafe';
 
 export async function GET(request: NextRequest) {
   const hash = process.env.ADMIN_PASSWORD_HASH;
@@ -12,5 +13,8 @@ export async function GET(request: NextRequest) {
     JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
     READ_ONLY: process.env.READ_ONLY,
     VISIBILITY_MODE: process.env.VISIBILITY_MODE,
+    CONTENT_ROOT: getContentRoot(),
+    DATA_ROOT: getDataRoot(),
+    PROCESS_CWD: process.cwd(),
   });
 }

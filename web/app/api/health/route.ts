@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
-import path from 'path';
+import { getContentRoot, resolveContentPath } from '@/lib/fsSafe';
 
 export async function GET() {
   try {
     // Verificar que el directorio de contenido existe y es accesible
-    const contentDir = path.join(process.cwd(), 'content');
+    const contentDir = getContentRoot();
     await fs.access(contentDir);
     
     // Verificar que el directorio de sesiones existe
-    const sessionsDir = path.join(contentDir, 'sessions');
+    const sessionsDir = resolveContentPath('sessions');
     await fs.access(sessionsDir);
     
     return NextResponse.json({

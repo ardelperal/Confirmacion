@@ -1,5 +1,5 @@
 # Dockerfile para la aplicación de Confirmación
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Instalar dependencias necesarias (incluyendo git para submódulos)
 RUN apk add --no-cache curl git
@@ -31,7 +31,7 @@ RUN if [ -f "package.json" ] && npm run --silent sync:catequesis 2>/dev/null; th
 RUN cd web && npm run build
 
 # Imagen de producción
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -45,7 +45,7 @@ RUN adduser --system --uid 1001 nextjs
 RUN apk add --no-cache curl
 
 # Copiar archivos necesarios desde el builder
-COPY --from=builder /app/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/public
 
@@ -72,4 +72,4 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD /usr/local/bin/healthcheck.sh
 
-CMD ["node", "server.js"]
+CMD ["node", "web/server.js"]

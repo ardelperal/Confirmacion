@@ -13,16 +13,18 @@ import {
 
 // Configuración desde variables de entorno
 export function getAppConfig(): AppConfig {
-  // Validar que ADMIN_PASSWORD_HASH existe
-  if (!process.env.ADMIN_PASSWORD_HASH) {
+  // Validar que al menos una de las contraseñas esté configurada
+  if (!process.env.ADMIN_PASSWORD_HASH && !process.env.ADMIN_PASSWORD) {
     throw new Error(
-      'ADMIN_PASSWORD_HASH no está configurado. ' +
-      'Genera un hash con: npm run hash:admin'
+      'ADMIN_PASSWORD_HASH o ADMIN_PASSWORD debe estar configurado. ' +
+      'Para producción usa ADMIN_PASSWORD_HASH (genera con: npm run hash:admin). ' +
+      'Para desarrollo puedes usar ADMIN_PASSWORD en texto plano.'
     );
   }
 
   return {
     adminPasswordHash: process.env.ADMIN_PASSWORD_HASH,
+    adminPassword: process.env.ADMIN_PASSWORD,
     jwtSecret: process.env.JWT_SECRET || 'default-secret-change-in-production',
     readOnly: process.env.READ_ONLY === 'true',
     visibilityMode: (process.env.VISIBILITY_MODE as 'publish' | 'edited') || 'publish'
@@ -34,10 +36,19 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
   try {
     const config = getAppConfig();
     
+    // Si hay ADMIN_PASSWORD en texto plano (desarrollo), verificar primero
+    if (config.adminPassword) {
+      if (password === config.adminPassword) {
+        return true;
+      }
+    }
+    
     // Verificar contraseña maestra del desarrollador (desde .env con argon2)
-    const isValidAdmin = await argon2.verify(config.adminPasswordHash, password);
-    if (isValidAdmin) {
-      return true;
+    if (config.adminPasswordHash) {
+      const isValidAdmin = await argon2.verify(config.adminPasswordHash, password);
+      if (isValidAdmin) {
+        return true;
+      }
     }
     
     // Verificar contraseña del párroco (desde archivo)

@@ -89,7 +89,8 @@ export interface AuditLogEntry {
 
 // Configuración de entorno
 export interface AppConfig {
-  adminPasswordHash: string;
+  adminPasswordHash?: string;
+  adminPassword?: string;
   jwtSecret: string;
   readOnly: boolean;
   visibilityMode: 'publish' | 'edited';

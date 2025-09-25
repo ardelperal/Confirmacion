@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 import { promises as fs } from 'fs';
-import path from 'path';
 import { logAdminAction, createLogContext } from '@/lib/logging-middleware';
 import { checkAdminRateLimit } from '@/lib/adminRateLimit';
+import { resolveContentPath, writeContentFile } from '@/lib/fsSafe';
 
 const DEFAULT_TEMPLATE = `---
 code: {CODE}
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
-    const filePath = path.join(sessionsDir, `${code}.md`);
+    const sessionsDir = resolveContentPath('sessions');
+    const filePath = resolveContentPath('sessions', `${code}.md`);
 
     // Verificar si ya existe
     try {
@@ -136,9 +136,6 @@ export async function POST(request: NextRequest) {
     } catch {
       // El archivo no existe, podemos crearlo
     }
-
-    // Crear directorio si no existe
-    await fs.mkdir(sessionsDir, { recursive: true });
 
     // Determinar módulo y título por defecto
     const moduleCode = code.charAt(0);
@@ -163,10 +160,10 @@ export async function POST(request: NextRequest) {
       .replace(/{EDITED_AT}/g, now);
 
     // Escribir archivo
-    await fs.writeFile(filePath, content, 'utf-8');
+    await writeContentFile(content, 'sessions', `${code}.md`);
 
     // Log de auditoría
-    const auditLogPath = path.join(process.cwd(), 'content', '.audit.log');
+    const auditLogPath = resolveContentPath('.audit.log');
     const auditEntry = {
       ts: now,
       user: 'parroco',

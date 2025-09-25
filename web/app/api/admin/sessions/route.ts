@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { verifyAdminAuth } from '@/lib/auth';
+import { resolveContentPath } from '@/lib/fsSafe';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
+    const sessionsDir = resolveContentPath('sessions');
     
     // Verificar si el directorio existe
     try {

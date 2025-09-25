@@ -3,18 +3,32 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { checkAdminRateLimit } from '@/lib/adminRateLimit';
+import { resolveContentPath, writeContentFile, readContentFile } from '@/lib/fsSafe';
+
+type FrontMatterRecord = Record<string, unknown>;
+
+const FRONT_MATTER_REGEX = /^\uFEFF?---[\s\S]*?\r?\n---[^\n\r]*\r?\n?/;
+
+function stripFrontMatter(raw: string): string {
+  if (!raw) {
+    return raw;
+  }
+  const match = raw.match(FRONT_MATTER_REGEX);
+  if (!match) {
+    return raw;
+  }
+  return raw.slice(match[0].length);
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar rate limiting
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) {
       return rateLimitResponse;
     }
-    
+
     const { code, markdown } = await request.json();
-    
-    // Validar código
+
     if (!code || !code.match(/^[A-F][1-4]$/)) {
       return NextResponse.json(
         { error: 'Código inválido' },
@@ -29,46 +43,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
-    const filePath = path.join(sessionsDir, `${code}.md`);
-    
-    // Crear directorio si no existe
-    if (!fs.existsSync(sessionsDir)) {
-      fs.mkdirSync(sessionsDir, { recursive: true });
-    }
+    const relativePath = `${code}.md`;
+    const targetFile = resolveContentPath('sessions', relativePath);
 
-    // Parsear el contenido actual para obtener/actualizar metadatos
-    let frontMatter: any = {};
-    let version = 1;
-    
+    let parsedFrontMatter: FrontMatterRecord = {};
+    let contentBody = markdown;
+    let parsedSuccessfully = false;
+
     try {
-      const { data } = matter(markdown);
-      frontMatter = data;
-      version = (frontMatter.version || 0) + 1;
-    } catch (error) {
-      // Si no se puede parsear, usar valores por defecto
-      console.warn('Error parsing front matter, using defaults');
+      const parsed = matter(markdown);
+      parsedFrontMatter = (parsed.data as FrontMatterRecord) || {};
+      contentBody = parsed.content;
+      parsedSuccessfully = true;
+    } catch (parseError) {
+      console.warn('Error parsing front matter, falling back to existing metadata', parseError);
     }
 
-    // Actualizar metadatos
+    let baseFrontMatter: FrontMatterRecord = {};
+
+    try {
+      const existingRaw = await readContentFile('sessions', relativePath);
+      const existingParsed = matter(existingRaw);
+      baseFrontMatter = (existingParsed.data as FrontMatterRecord) || {};
+      if (!parsedSuccessfully) {
+        contentBody = stripFrontMatter(markdown);
+      }
+    } catch (loadError) {
+      console.warn(`No existing metadata found for ${code} (${targetFile}), continuing with defaults`, loadError);
+      if (!parsedSuccessfully) {
+        contentBody = stripFrontMatter(markdown);
+      }
+    }
+
+    const baseVersion = Number((baseFrontMatter as any).version) || 0;
+    const incomingVersion = Number((parsedFrontMatter as any).version) || baseVersion;
+    const version = Math.max(baseVersion, incomingVersion) + 1;
+
     const now = new Date().toISOString();
-    const updatedFrontMatter = {
-      ...frontMatter,
+    const status = (parsedFrontMatter as any).status || (baseFrontMatter as any).status || 'draft';
+
+    const finalFrontMatter = {
+      ...baseFrontMatter,
+      ...parsedFrontMatter,
       code,
       version,
       editedBy: 'parroco',
       editedAt: now,
-      status: frontMatter.status || 'draft'
+      status
     };
 
-    // Reconstruir el archivo con front matter actualizado
-    const { content } = matter(markdown);
-    const updatedMarkdown = matter.stringify(content, updatedFrontMatter);
+    const sanitizedContent = parsedSuccessfully ? contentBody : stripFrontMatter(contentBody);
+    const updatedMarkdown = matter.stringify(sanitizedContent, finalFrontMatter);
 
-    // Guardar archivo
-    fs.writeFileSync(filePath, updatedMarkdown, 'utf8');
+    await writeContentFile(updatedMarkdown, 'sessions', relativePath);
 
-    // Registrar en auditoría
     await logAudit({
       ts: now,
       user: 'parroco',
@@ -77,8 +105,8 @@ export async function POST(request: NextRequest) {
       version
     });
 
-    return NextResponse.json({ 
-      ok: true, 
+    return NextResponse.json({
+      ok: true,
       version,
       message: 'Sesión guardada exitosamente'
     });
@@ -99,19 +127,16 @@ async function logAudit(entry: {
   version: number;
 }) {
   try {
-    const contentDir = path.join(process.cwd(), 'content');
-    const auditPath = path.join(contentDir, '.audit.log');
-    
-    // Crear directorio si no existe
+    const auditPath = resolveContentPath('.audit.log');
+    const contentDir = path.dirname(auditPath);
+
     if (!fs.existsSync(contentDir)) {
       fs.mkdirSync(contentDir, { recursive: true });
     }
 
-    // Agregar entrada al log (formato JSONL)
     const logLine = JSON.stringify(entry) + '\n';
     fs.appendFileSync(auditPath, logLine, 'utf8');
   } catch (error) {
     console.error('Error logging audit:', error);
-    // No fallar la operación principal por errores de auditoría
   }
 }

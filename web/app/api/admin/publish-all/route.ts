@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { resolveContentPath } from '@/lib/fsSafe';
 
 export async function POST(request: NextRequest) {
   try {
-    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
+    const sessionsDir = resolveContentPath('sessions');
     
     // Verificar que el directorio existe
     if (!fs.existsSync(sessionsDir)) {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Procesar cada sesión
     for (const file of files) {
       try {
-        const filePath = path.join(sessionsDir, file);
+        const filePath = resolveContentPath('sessions', file);
         const code = path.basename(file, '.md').toUpperCase();
         
         // Leer y parsear el archivo actual
@@ -108,8 +109,8 @@ async function logAudit(entry: {
   version: number;
 }) {
   try {
-    const contentDir = path.join(process.cwd(), 'content');
-    const auditPath = path.join(contentDir, '.audit.log');
+    const auditPath = resolveContentPath('.audit.log');
+    const contentDir = path.dirname(auditPath);
     
     // Crear directorio si no existe
     if (!fs.existsSync(contentDir)) {

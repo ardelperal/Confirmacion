@@ -11,6 +11,8 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const SOURCE_DIR = path.join(PROJECT_ROOT, 'external', 'catequesis');
 const DEST_DIR = path.join(PROJECT_ROOT, 'web', 'public', 'recursos', 'catequesis');
+const SOURCE_ASSETS_DIR = path.join(SOURCE_DIR, 'assets');
+const DEST_ASSETS_DIR = path.join(DEST_DIR, 'assets');
 
 // Archivos y directorios a excluir
 const EXCLUDED_ITEMS = new Set([
@@ -105,6 +107,108 @@ async function copyDirectory(srcDir, destDir) {
   }
 }
 
+function normalizeKey(p) {
+  return p.replace(/\\/g, '/').toLowerCase();
+}
+
+let sourceAssetIndex;
+
+async function buildSourceAssetIndex() {
+  if (sourceAssetIndex) return sourceAssetIndex;
+
+  sourceAssetIndex = new Map();
+
+  async function walk(dir, base = '') {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const absPath = path.join(dir, entry.name);
+      const relPath = path.join(base, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(absPath, relPath);
+      } else if (entry.isFile()) {
+        const key = normalizeKey(relPath);
+        if (!sourceAssetIndex.has(key)) {
+          sourceAssetIndex.set(key, absPath);
+        }
+      }
+    }
+  }
+
+  try {
+    await walk(SOURCE_ASSETS_DIR);
+  } catch (error) {
+    console.error(`? Error construyendo índice de assets: ${error.message}`);
+  }
+
+  return sourceAssetIndex;
+}
+
+async function ensureAsset(relativePath) {
+  const destPath = path.join(DEST_ASSETS_DIR, relativePath);
+
+  try {
+    await fs.access(destPath);
+    return;
+  } catch {
+    // Continuar para intentar recuperarlo
+  }
+
+  const assetMap = await buildSourceAssetIndex();
+  const sourcePath = assetMap.get(normalizeKey(relativePath));
+  if (!sourcePath) {
+    console.warn(`? Asset no encontrado para ${relativePath}`);
+    return;
+  }
+
+  await ensureDirectory(path.dirname(destPath));
+  await fs.copyFile(sourcePath, destPath);
+  console.log(`V Asset corregido: ${relativePath}`);
+}
+
+async function ensureHtmlAssets(htmlContent) {
+  const regex = /\/recursos\/catequesis\/assets\/([^"'>]+)/g;
+  const seen = new Set();
+  let match;
+
+  while ((match = regex.exec(htmlContent)) !== null) {
+    const relPath = match[1];
+    if (seen.has(relPath)) continue;
+    seen.add(relPath);
+    await ensureAsset(relPath);
+  }
+}
+
+/**
+ * Normaliza rutas relativas dentro de los HTML copiados
+ */
+async function fixHtmlResources(destDir) {
+  const entries = await fs.readdir(destDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const entryPath = path.join(destDir, entry.name);
+
+    if (entry.isDirectory()) {
+      await fixHtmlResources(entryPath);
+      continue;
+    }
+
+    if (!entry.name.endsWith('.html')) {
+      continue;
+    }
+
+    let content = await fs.readFile(entryPath, 'utf8');
+
+    content = content
+      .replace(/\.\.\/assets\/characters\//g, '/recursos/catequesis/assets/characters/')
+      .replace(/src="assets\//g, 'src="/recursos/catequesis/assets/')
+      .replace(/\.\.\/styles\/fichas\.css/g, '/recursos/catequesis/styles/fichas.css');
+
+    await ensureHtmlAssets(content);
+    await fs.writeFile(entryPath, content, 'utf8');
+  }
+}
+
 /**
  * Función principal
  */
@@ -132,6 +236,9 @@ async function main() {
     // Copiar contenido
     console.log('\n📋 Copiando archivos...');
     await copyDirectory(SOURCE_DIR, DEST_DIR);
+
+    console.log('\n🛠️ Normalizando rutas en ficheros HTML...');
+    await fixHtmlResources(DEST_DIR);
     
     // Crear index.html en recursos si no existe
     const recursosDir = path.join(PROJECT_ROOT, 'web', 'public', 'recursos');

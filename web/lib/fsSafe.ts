@@ -5,9 +5,71 @@
 
 import path from 'path';
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 
-// Directorio base para contenido
-const DATA_CONTENT_DIR = path.resolve(process.cwd(), '../data/content');
+// Detectar la carpeta raíz de contenido considerando distintos entornos (dev, build standalone, Docker)
+const FALLBACK_CONTENT_DIR = path.resolve(process.cwd(), '../data/content');
+
+const candidateContentRoots = [
+  process.env.CONTENT_ROOT,
+  '/app/content',
+  '/data/content',
+  FALLBACK_CONTENT_DIR,
+  path.resolve(process.cwd(), 'data/content'),
+  path.resolve(process.cwd(), '../data/content'),
+  path.resolve(process.cwd(), 'content'),
+  path.resolve(process.cwd(), '../content')
+].filter((dir): dir is string => Boolean(dir));
+
+function locateContentRoot(): string {
+  for (const dir of candidateContentRoots) {
+    try {
+      if (existsSync(dir)) {
+        return dir;
+      }
+    } catch {
+      // Ignorar errores de acceso y continuar con el siguiente candidato
+    }
+  }
+
+  // Si ningún candidato existe, devolver el fallback original (puede no existir hasta que se sincronice el contenido)
+  return FALLBACK_CONTENT_DIR;
+}
+
+const DATA_CONTENT_DIR = locateContentRoot();
+
+export function getContentRoot(): string {
+  return DATA_CONTENT_DIR;
+}
+
+const candidateDataRoots = [
+  process.env.DATA_ROOT,
+  '/app/data',
+  '/data',
+  path.resolve(process.cwd(), 'data'),
+  path.resolve(process.cwd(), '../data'),
+  path.resolve(DATA_CONTENT_DIR, '..')
+].filter((dir): dir is string => Boolean(dir));
+
+function locateDataRoot(): string {
+  for (const dir of candidateDataRoots) {
+    try {
+      if (existsSync(dir)) {
+        return dir;
+      }
+    } catch {
+      // Ignorar y seguir
+    }
+  }
+
+  return path.resolve(DATA_CONTENT_DIR, '..');
+}
+
+const DATA_ROOT_DIR = locateDataRoot();
+
+export function getDataRoot(): string {
+  return DATA_ROOT_DIR;
+}
 
 /**
  * Resuelve una ruta de contenido de forma segura

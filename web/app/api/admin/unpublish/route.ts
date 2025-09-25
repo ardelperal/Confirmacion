@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { resolveContentPath } from '@/lib/fsSafe';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,8 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
-    const filePath = path.join(sessionsDir, `${code}.md`);
+    const filePath = resolveContentPath('sessions', `${code}.md`);
     
     // Verificar que el archivo existe
     if (!fs.existsSync(filePath)) {
@@ -77,8 +77,8 @@ async function logAudit(entry: {
   version: number;
 }) {
   try {
-    const contentDir = path.join(process.cwd(), 'content');
-    const auditPath = path.join(contentDir, '.audit.log');
+    const auditPath = resolveContentPath('.audit.log');
+    const contentDir = path.dirname(auditPath);
     
     // Crear directorio si no existe
     if (!fs.existsSync(contentDir)) {

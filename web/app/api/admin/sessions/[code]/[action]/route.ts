@@ -5,8 +5,9 @@ import matter from 'gray-matter';
 import { isAdmin } from '@/lib/auth';
 import { logAuditAction } from '@/lib/audit';
 import { SessionFrontMatter } from '@/types';
+import { resolveContentPath } from '@/lib/fsSafe';
 
-const SESSIONS_DIR = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
+const SESSIONS_DIR = resolveContentPath('sessions');
 
 export async function POST(
   request: NextRequest,

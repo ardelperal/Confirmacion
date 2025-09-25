@@ -1,8 +1,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { AuditLogEntry } from '@/types';
+import { resolveContentPath } from '@/lib/fsSafe';
 
-const AUDIT_LOG_PATH = path.join(process.cwd(), 'content', '.audit.log');
+const AUDIT_LOG_PATH = resolveContentPath('.audit.log');
 
 // Asegurar que el directorio de contenido existe
 async function ensureContentDir() {

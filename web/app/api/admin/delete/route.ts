@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { checkAdminRateLimit } from '@/lib/adminRateLimit';
+import { getDataRoot, resolveContentPath } from '@/lib/fsSafe';
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -32,8 +33,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const sessionsDir = path.join(process.cwd(), '..', 'data', 'content', 'sessions');
-    const filePath = path.join(sessionsDir, `${code}.md`);
+    const sessionsDir = resolveContentPath('sessions');
+    const filePath = resolveContentPath('sessions', `${code}.md`);
     
     // Verificar que el archivo existe
     if (!fs.existsSync(filePath)) {
@@ -49,7 +50,7 @@ export async function DELETE(request: NextRequest) {
     const version = frontMatter.version || 1;
 
     // Crear directorio de papelera si no existe
-    const trashDir = path.join(process.cwd(), '..', 'data', '.trash');
+    const trashDir = path.join(getDataRoot(), '.trash');
     if (!fs.existsSync(trashDir)) {
       fs.mkdirSync(trashDir, { recursive: true });
     }
@@ -97,8 +98,8 @@ async function logAudit(entry: {
   trashFile?: string;
 }) {
   try {
-    const contentDir = path.join(process.cwd(), '..', 'data');
-    const auditPath = path.join(contentDir, '.audit.log');
+    const auditPath = resolveContentPath('.audit.log');
+    const contentDir = path.dirname(auditPath);
     
     // Crear directorio si no existe
     if (!fs.existsSync(contentDir)) {
