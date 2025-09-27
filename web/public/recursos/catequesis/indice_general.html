@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Índice General - Fichas de Personajes Bíblicos</title>
+<link rel="stylesheet" href="styles/fichas.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  
+  /* Estilos personalizados para el índice */
+  body { 
+    font-family: 'Inter', sans-serif; 
+    min-height: 100vh;
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    margin: 0;
+    padding: 0;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  
+  .main-content {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    padding: 2rem;
+  }
+  
+  .nav-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: #2563eb;
+    color: white;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.2s;
+  }
+  
+  .nav-button:hover {
+    background: #1d4ed8;
+  }
+  
+  .main-title {
+    font-size: 2.25rem;
+    font-weight: bold;
+    text-align: center;
+    color: #111827;
+    margin-bottom: 3rem;
+  }
+  
+  .section {
+    margin-bottom: 3rem;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #3b82f6;
+  }
+  
+  .character-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .character-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s;
+  }
+  
+  .character-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .character-name {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+  
+  .character-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+  }
+  
+  .character-link {
+    display: inline-block;
+    background: #2563eb;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .character-link:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+  }
+  
+  .footer {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+    color: #6b7280;
+  }
+</style>
+</head>
+<body>
+  <!-- Main Content -->
+  <div class="container">
+    <div class="main-content">
+      <!-- Botón de navegación -->
+      <div style="margin-bottom: 2rem;">
+        <a href="/recursos/catequesis" class="nav-button">
+          ← Volver a la página principal
+        </a>
+      </div>
+      
+      <h1 class="main-title">PERSONAJES DE LA HISTORIA DE LA SALVACIÓN</h1>
+
+      <div class="section">
+        <h2 class="section-title">🌟 Patriarcas y Orígenes</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Adán y Eva</div>
+            <div class="character-description">Los primeros seres humanos, la creación y la caída</div>
+            <a href="fichas/adan_eva.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Caín y Abel</div>
+            <div class="character-description">El primer pecado entre hermanos</div>
+            <a href="fichas/cain_abel.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Noé</div>
+            <div class="character-description">El arca y la alianza del arco iris</div>
+            <a href="fichas/noe.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Abraham</div>
+            <div class="character-description">El padre de la fe</div>
+            <a href="fichas/abraham.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Isaac</div>
+            <div class="character-description">El hijo de la promesa</div>
+            <a href="fichas/isaac.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jacob</div>
+            <div class="character-description">Israel, el que luchó con Dios</div>
+            <a href="fichas/jacob.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">José</div>
+            <div class="character-description">El soñador que salvó a Egipto</div>
+            <a href="fichas/jose_patriarca.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Josué</div>
+            <div class="character-description">El conquistador de la Tierra Prometida</div>
+            <a href="fichas/josue.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Samuel</div>
+            <div class="character-description">El último juez de Israel</div>
+            <a href="fichas/samuel.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">⚡ Liberación y Ley</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Moisés</div>
+            <div class="character-description">El libertador, los 10 mandamientos, el Éxodo</div>
+            <a href="fichas/moises_patriarca.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Aarón</div>
+            <div class="character-description">El primer sumo sacerdote</div>
+            <a href="fichas/aaron.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Miriam</div>
+            <div class="character-description">La profetisa, hermana de Moisés</div>
+            <a href="fichas/miriam.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Josué</div>
+            <div class="character-description">La conquista de la Tierra Prometida</div>
+            <a href="fichas/josue.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">⚔️ Jueces y Héroes</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Débora</div>
+            <div class="character-description">La jueza y profetisa</div>
+            <a href="fichas/debora.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Gedeón</div>
+            <div class="character-description">La victoria con pocos soldados</div>
+            <a href="fichas/gedeon.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Sansón</div>
+            <div class="character-description">La fuerza divina y sus debilidades</div>
+            <a href="fichas/sanson.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Rut</div>
+            <div class="character-description">La lealtad y la providencia</div>
+            <a href="fichas/rut.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Samuel</div>
+            <div class="character-description">El último juez, el profeta que ungió reyes</div>
+            <a href="fichas/samuel.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Ester</div>
+            <div class="character-description">La reina valiente</div>
+            <a href="fichas/ester.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">👑 Reyes de Israel</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Saúl</div>
+            <div class="character-description">El primer rey de Israel</div>
+            <a href="fichas/saul.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">David</div>
+            <div class="character-description">El rey según el corazón de Dios</div>
+            <a href="fichas/david.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Salomón</div>
+            <div class="character-description">La sabiduría y el templo</div>
+            <a href="fichas/salomon.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">🔥 Profetas</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Elías</div>
+            <div class="character-description">El profeta del fuego, defensor del Dios verdadero</div>
+            <a href="fichas/elias.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Eliseo</div>
+            <div class="character-description">El sucesor de Elías, los milagros</div>
+            <a href="fichas/eliseo.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Isaías</div>
+            <div class="character-description">El profeta mesiánico</div>
+            <a href="fichas/isaias.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jeremías</div>
+            <div class="character-description">El profeta de las lágrimas</div>
+            <a href="fichas/jeremias.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Ezequiel</div>
+            <div class="character-description">Las visiones en el exilio</div>
+            <a href="fichas/ezequiel.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Daniel</div>
+            <div class="character-description">La fidelidad en tierra extranjera</div>
+            <a href="fichas/daniel.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div class="character-name">Jonás</div>
+            <div class="text-sm text-gray-600 mb-4">La misericordia universal de Dios</div>
+            <a href="fichas/jonas.html" target="_blank" class="character-link inline-block bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">Ver Ficha</a>
+          </div>
+          <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div class="character-name">Nehemías</div>
+            <div class="text-sm text-gray-600 mb-4">El constructor de murallas</div>
+            <a href="fichas/nehemias.html" target="_blank" class="character-link inline-block bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">✨ La Encarnación</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">María</div>
+            <div class="text-sm text-gray-600 mb-4">La Madre de Jesús, el "Sí" a Dios</div>
+            <a href="fichas/maria.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">José</div>
+            <div class="text-sm text-gray-600 mb-4">El padre adoptivo, el hombre justo</div>
+            <a href="fichas/jose_patriarca.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Isabel</div>
+            <div class="text-sm text-gray-600 mb-4">La madre de Juan Bautista</div>
+            <a href="fichas/isabel.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Zacarías</div>
+            <div class="text-sm text-gray-600 mb-4">El padre de Juan Bautista</div>
+            <a href="fichas/zacarias.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Juan Bautista</div>
+            <div class="text-sm text-gray-600 mb-4">El precursor, "Preparad el camino"</div>
+            <a href="fichas/juan_bautista.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">✝️ Jesús - Episodios Clave</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Jesús - El Hijo de Dios</div>
+            <div class="text-sm text-gray-600 mb-4">Ficha general sobre Jesús</div>
+            <a href="fichas/jesus.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Nacimiento</div>
+            <div class="text-sm text-gray-600 mb-4">La Navidad, Belén</div>
+            <a href="fichas/jesus_nacimiento.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Bautismo</div>
+            <div class="text-sm text-gray-600 mb-4">El inicio de su ministerio</div>
+            <a href="fichas/jesus_bautismo.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Milagros</div>
+            <div class="text-sm text-gray-600 mb-4">La multiplicación de los panes</div>
+            <a href="fichas/jesus_milagros.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Pasión</div>
+            <div class="text-sm text-gray-600 mb-4">El Viernes Santo</div>
+            <a href="fichas/jesus_pasion_muerte.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Resurrección</div>
+            <div class="text-sm text-gray-600 mb-4">La Pascua</div>
+            <a href="fichas/jesus_resurreccion.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Tentaciones</div>
+            <div class="text-sm text-gray-600 mb-4">La victoria sobre el mal</div>
+            <a href="fichas/jesus_tentaciones.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Sermón del Monte</div>
+            <div class="text-sm text-gray-600 mb-4">Las Bienaventuranzas</div>
+            <a href="fichas/jesus_sermon_monte.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Transfiguración</div>
+            <div class="text-sm text-gray-600 mb-4">La gloria divina revelada</div>
+            <a href="fichas/jesus_transfiguracion.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Última Cena</div>
+            <div class="text-sm text-gray-600 mb-4">La institución de la Eucaristía</div>
+            <a href="fichas/jesus_ultima_cena.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Ascensión</div>
+            <div class="text-sm text-gray-600 mb-4">La subida al cielo</div>
+            <a href="fichas/jesus_ascension.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Jesús - Entrada en Jerusalén</div>
+            <div class="text-sm text-gray-600 mb-4">El Domingo de Ramos</div>
+            <a href="fichas/jesus_entrada_jerusalen.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">🕊️ La Iglesia Primitiva</h2>
+        <div class="character-grid">
+          <div class="character-card">
+            <div class="character-name">Pedro</div>
+            <div class="text-sm text-gray-600 mb-4">El primer Papa, las llaves del Reino</div>
+            <a href="fichas/pedro.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Pablo</div>
+            <div class="text-sm text-gray-600 mb-4">El apóstol de los gentiles</div>
+            <a href="fichas/pablo.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Juan Evangelista</div>
+            <div class="text-sm text-gray-600 mb-4">El discípulo amado</div>
+            <a href="fichas/juan_evangelista.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Santiago</div>
+            <div class="text-sm text-gray-600 mb-4">El hermano de Juan</div>
+            <a href="fichas/santiago.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">Esteban</div>
+            <div class="text-sm text-gray-600 mb-4">El primer mártir</div>
+            <a href="fichas/esteban.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+          <div class="character-card">
+            <div class="character-name">María Magdalena</div>
+            <div class="text-sm text-gray-600 mb-4">La primera testigo de la Resurrección</div>
+            <a href="fichas/maria_magdalena.html" target="_blank" class="character-link">Ver Ficha</a>
+          </div>
+        </div>
+      </div>
+
+      <footer class="text-center mt-10 pt-8 border-t border-gray-200 text-gray-600">
+        <p>Fichas de Personajes Bíblicos</p>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

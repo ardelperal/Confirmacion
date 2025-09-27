@@ -2,7 +2,36 @@
 
 [![CI & Security](https://github.com/${{github.repository}}/actions/workflows/ci-security.yml/badge.svg)](../../actions/workflows/ci-security.yml)
 
-Sistema web para gestión de sesiones de catequesis dirigidas a jóvenes de 12-13 años en preparación para el sacramento de la Confirmación.
+Sistema web profesional para gestión de sesiones de catequesis dirigidas a jóvenes de 12-13 años en preparación para el sacramento de la Confirmación.
+
+## 📋 Tabla de Contenidos
+
+- [🚀 Inicio Rápido](#-inicio-rápido)
+- [📁 Estructura del Proyecto](#-estructura-del-proyecto)
+- [🔧 Instalación y Configuración](#-instalación-y-configuración)
+- [📚 Recursos de Catequesis](#-recursos-de-catequesis)
+- [🛠️ Scripts y Herramientas](#️-scripts-y-herramientas)
+- [🔒 Seguridad y Backup](#-seguridad-y-backup)
+- [📖 Documentación](#-documentación)
+- [🐛 Solución de Problemas](#-solución-de-problemas)
+
+## 🚀 Inicio Rápido
+
+### Requisitos Previos
+- Docker y Docker Compose
+- Node.js 18+ (para desarrollo local)
+- Git con submódulos habilitados
+
+### Despliegue Rápido
+```bash
+git clone --recurse-submodules <repository-url>
+cd Confirmacion
+cp web/.env.sample .env
+# Editar .env con tus configuraciones
+docker compose up -d
+```
+
+Accede a la aplicación en `http://localhost:8080`
 
 ## 🚀 Despliegue en NAS
 
@@ -137,19 +166,38 @@ docker compose logs web
 
 ```
 Confirmacion/
-├── web/                    # Aplicación Next.js
-├── data/
-│   ├── content/           # Contenido de sesiones (modificable por párroco)
-│   │   ├── sessions/      # Archivos .md de sesiones
-│   │   └── modules.yml    # Configuración de módulos
-│   └── auth/              # Autenticación del párroco
-├── docker-compose.yml     # Configuración Docker
-├── .env                   # Variables de entorno
-├── backup.ps1             # Script de backup automatizado
-├── restore.ps1            # Script de restauración
-├── BACKUP_SISTEMA.md      # Documentación del sistema de backup
-└── README.md             # Este archivo
+├── 📁 docs/                    # Documentación técnica
+│   ├── deployment/            # Guías de despliegue
+│   ├── security/              # Documentación de seguridad
+│   └── technical/             # Documentación técnica
+├── 📁 external/               # Submódulos externos
+│   └── catequesis/           # Contenido de catequesis
+├── 📁 scripts/               # Scripts de automatización
+│   ├── backup/               # Scripts de respaldo
+│   ├── export/               # Scripts de exportación
+│   ├── setup/                # Scripts de configuración
+│   └── verification/         # Scripts de verificación
+├── 📁 web/                   # Aplicación Next.js
+│   ├── app/                  # Rutas y páginas
+│   ├── components/           # Componentes React
+│   ├── lib/                  # Utilidades y configuración
+│   └── public/               # Archivos estáticos
+├── 📁 data/                  # Datos de la aplicación
+│   ├── content/              # Contenido de sesiones
+│   └── logs/                 # Logs del sistema
+├── docker-compose.yml        # Configuración Docker
+├── Dockerfile               # Imagen de la aplicación
+└── .env                     # Variables de entorno
 ```
+
+## 🔧 Instalación y Configuración
+
+### Configuración Detallada
+
+Para una configuración completa del sistema, consulta:
+- 📖 [Guía de Despliegue en NAS](docs/deployment/DESPLIEGUE_NAS.md)
+- 🐳 [Configuración Docker](docs/deployment/README_DOCKER.md)
+- 🔒 [Configuración de Seguridad](docs/security/SECURITY-GOTENBERG.md)
 
 ## 📁 Estructura de Datos
 
@@ -218,19 +266,50 @@ npm run dev
 
 **Criterio de éxito**: Cualquier desarrollador puede actualizar el contenido con **1 comando** (`npm run sync:catequesis`) y ver los cambios inmediatamente en el servidor local.
 
-## 🔒 Backup y Seguridad
+## 🛠️ Scripts y Herramientas
 
-### Sistema de Backup
+El proyecto incluye varios scripts organizados por funcionalidad:
+
+### 📤 Scripts de Exportación
+- **[export-all-sessions-pdf.ps1](scripts/export/README.md)** - Exporta todas las sesiones a PDF automáticamente
+
+### ⚙️ Scripts de Configuración
+- **setup-catequesis.ps1** - Configuración inicial del sistema de catequesis
+- **sync-catequesis.mjs** - Sincronización de contenido de catequesis
+
+### ✅ Scripts de Verificación
+- **verify-setup.ps1** - Verificación del sistema en Windows
+- **verify-setup.sh** - Verificación del sistema en Linux/macOS
+
+### 💾 Scripts de Backup
+- Consulta la [documentación de backup](docs/technical/BACKUP_SISTEMA.md) para scripts de respaldo
+
+## 🔒 Seguridad y Backup
+
+### Sistema de Backup Automático
 ```powershell
-# Crear backup de todos los datos del párroco
-.\backup.ps1 -Compress
+# Crear backup completo
+.\scripts\backup\backup.ps1 -Compress
 
 # Restaurar desde backup
-.\restore.ps1 -BackupPath "./backups/backup.zip"
+.\scripts\backup\restore.ps1 -BackupPath "./backups/backup.zip"
 ```
-- **Incluye**: Sesiones, configuración, autenticación del párroco
-- **Documentación completa**: Ver `BACKUP_SISTEMA.md`
-- **Programación automática**: Tareas programadas o cron
+
+### Documentación de Seguridad
+- 🔐 [Configuración de Seguridad](docs/security/SECURITY-GOTENBERG.md)
+- 🔑 [Recuperación de Contraseña](docs/security/RECUPERACION_CONTRASEÑA.md)
+- 💾 [Sistema de Backup Seguro](docs/technical/BACKUP_SEGURO.md)
+
+## 📖 Documentación
+
+### Documentación Técnica
+- 🔧 [Actualización de Dependencias](docs/technical/ACTUALIZACIONES_DEPENDENCIAS.md)
+- 🤖 [Configuración de Agentes](docs/technical/AGENTS.md)
+- 💾 [Sistema de Backup](docs/technical/BACKUP_SISTEMA.md)
+
+### Documentación de Despliegue
+- 🏠 [Despliegue en NAS](docs/deployment/DESPLIEGUE_NAS.md)
+- 🐳 [Configuración Docker](docs/deployment/README_DOCKER.md)
 
 ### Backup automático (configurar en NAS)
 
@@ -280,62 +359,44 @@ docker system prune -f
 - **Logs de aplicación:** `docker compose logs web`
 - **Logs de Gotenberg:** `docker compose logs gotenberg`
 
-## 🔧 Solución de Problemas
+## 🐛 Solución de Problemas
 
-### Error de conectividad Docker Hub
-Si aparece error "failed to resolve source metadata for docker.io/library/node:18":
+### Problemas Comunes
 
-**Opción 1: Usar proxy/VPN**
+#### Error de conectividad Docker Hub
 ```bash
-# Configurar proxy Docker si es necesario
+# Usar proxy/VPN si es necesario
 docker build --build-arg HTTP_PROXY=http://proxy:port .
-```
 
-**Opción 2: Usar imagen local**
-```bash
-# Descargar imagen manualmente cuando haya conectividad
+# O descargar imagen manualmente
 docker pull node:18
-# Luego construir normalmente
 docker compose build
 ```
 
-**Opción 3: Ejecutar sin Docker**
-```bash
-cd web
-npm install
-npm run build
-npm start
-```
-
-### La aplicación no inicia
-1. Verificar que los puertos 8080 y 3001 están libres
+#### La aplicación no inicia
+1. Verificar puertos 8080 y 3001 libres
 2. Revisar logs: `docker compose logs web`
 3. Verificar permisos en `./data/`
 
-### Error de autenticación
+#### Error de autenticación
 1. Verificar `ADMIN_PASSWORD` en `.env`
 2. Limpiar cookies del navegador
-3. Reiniciar el contenedor web
+3. Reiniciar contenedor: `docker compose restart web`
 
-### Sesiones no aparecen
-1. Verificar `VISIBILITY_MODE` en `.env`
-2. Comprobar que las sesiones están publicadas (si `VISIBILITY_MODE=publish`)
-3. Verificar que las sesiones han sido editadas (si `VISIBILITY_MODE=edited`)
+### Comandos de Diagnóstico
+```bash
+# Ver logs en tiempo real
+docker compose logs -f web
 
-### Error en generación de PDF
-1. Verificar que Gotenberg está funcionando: `docker compose ps`
-2. Revisar logs: `docker compose logs gotenberg`
-3. Verificar `GOTENBERG_URL` en `.env`
+# Estado de servicios
+docker compose ps
 
-## 📝 Notas de Desarrollo
-
-- **Puerto de desarrollo:** 3000
-- **Puerto de producción:** 8080 (mapeado desde 3000 interno)
-- **Base de datos:** Sistema de archivos (markdown + YAML)
-- **Autenticación:** JWT con contraseña única de admin
-- **PDF:** Generación via Gotenberg (Chromium headless)
+# Health check
+curl http://localhost:8080/api/health
+```
 
 ---
 
-**Versión:** 1.0.0  
-**Última actualización:** $(date +%Y-%m-%d)
+**Versión:** 2.0.0  
+**Última actualización:** 2025-01-25  
+**Mantenido por:** Equipo de Desarrollo
