@@ -194,13 +194,12 @@ export default function SessionEditor() {
     }
     
     try {
-      const response = await fetch('/api/admin/duplicate', {
+      const response = await fetch(`/api/admin/sessions/${session?.code}/duplicate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          sourceCode: session?.code, 
-          targetCode: duplicateCode,
-          content 
+          newCode: duplicateCode,
+          newTitle: `${session?.title} (Copia)`
         })
       });
       

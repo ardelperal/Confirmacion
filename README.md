@@ -33,27 +33,50 @@ docker compose up -d
 
 Accede a la aplicación en `http://localhost:8080`
 
-## 🚀 Despliegue en NAS
+## 🚀 Despliegue en NAS Synology (DSM 7.1)
 
 ### Requisitos
-- Docker y Docker Compose instalados
-- Puerto 8080 disponible para la aplicación web
-- Puerto 3001 disponible para el servicio Gotenberg (PDF)
+- Synology NAS con DSM 7.1 o superior
+- Container Manager instalado desde Package Center
+- Acceso SSH habilitado
+- Puertos 8080 y 3001 disponibles
+
+### Preparación del NAS
+
+1. **Habilitar SSH:**
+   - Panel de Control → Terminal y SNMP → Habilitar servicio SSH
+   - Conectar: `ssh admin@IP_DEL_NAS`
+
+2. **Instalar Container Manager:**
+   - Package Center → Buscar "Container Manager" → Instalar
+   - Verificar que Docker está funcionando: `docker --version`
+
+3. **Crear estructura de directorios:**
+   ```bash
+   # Conectar por SSH al NAS
+   ssh admin@192.168.1.100
+   
+   # Crear directorio del proyecto
+   sudo mkdir -p /volume1/docker/catequesis
+   cd /volume1/docker/catequesis
+   ```
 
 ### Configuración inicial
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone <repository-url>
-   cd Confirmacion
+   # En el NAS
+   sudo git clone <repository-url> .
+   sudo chown -R admin:users .
    ```
 
 2. **Configurar variables de entorno:**
    ```bash
-   cp web/.env.sample .env
+   cp web/.env.example .env
+   nano .env
    ```
    
-   Editar `.env` con los valores de producción:
+   Configuración específica para Synology:
    ```env
    # Configuración de la aplicación
    BASE_URL=http://192.168.1.100:8080
@@ -71,25 +94,134 @@ Accede a la aplicación en `http://localhost:8080`
    GOTENBERG_URL=http://gotenberg:3000
    ```
 
-3. **Crear directorios de datos:**
+3. **Preparar directorios de datos:**
    ```bash
-   mkdir -p data/content data/logs
-   ```
-
-4. **Copiar contenido inicial:**
-   ```bash
+   # Crear directorios con permisos correctos
+   sudo mkdir -p data/content data/auth data/logs
+   sudo chown -R 1001:1001 data/
+   sudo chmod -R 755 data/
+   
+   # Copiar contenido inicial
    cp -r web/content/* data/content/
+   sudo chown -R 1001:1001 data/content/
    ```
 
 ### Despliegue
 
-```bash
-# Levantar los servicios
-docker compose up -d
+1. **Construir y ejecutar:**
+   ```bash
+   # Construir las imágenes
+   sudo docker compose build
+   
+   # Ejecutar en segundo plano
+   sudo docker compose up -d
+   ```
 
-# Verificar que están funcionando
-docker compose ps
-docker compose logs web
+2. **Verificar estado:**
+   ```bash
+   # Verificar contenedores
+   sudo docker compose ps
+   
+   # Ver logs si hay problemas
+   sudo docker compose logs web
+   sudo docker compose logs gotenberg
+   ```
+
+3. **Configurar inicio automático:**
+   - Container Manager → Contenedor → Configuración → Habilitar auto-restart
+
+### 🔄 Configuración de Backups en Synology
+
+Los volúmenes Docker que contienen datos modificables son:
+- `./data/content` - Sesiones de catequesis y configuración
+- `./data/auth` - Datos de autenticación
+- `./data/logs` - Logs de auditoría
+
+#### Backup Automático con Hyper Backup
+
+1. **Configurar Hyper Backup:**
+   - Package Center → Instalar "Hyper Backup"
+   - Crear nueva tarea de backup
+   - Seleccionar destino (USB, red, nube)
+
+2. **Configurar carpetas a respaldar:**
+   ```
+   Origen: /volume1/docker/catequesis/data/
+   Incluir:
+   ├── content/     (sesiones y configuración)
+   ├── auth/        (datos de autenticación)
+   └── logs/        (logs de auditoría)
+   
+   Excluir:
+   ├── .env         (contiene secretos)
+   └── node_modules/
+   ```
+
+3. **Programación recomendada:**
+   - Frecuencia: Diaria a las 2:00 AM
+   - Retención: 30 versiones
+   - Compresión: Habilitada
+   - Cifrado: Habilitado con contraseña fuerte
+
+#### Backup Manual por SSH
+
+```bash
+# Script de backup manual
+#!/bin/bash
+BACKUP_DIR="/volume1/backups/catequesis"
+DATE=$(date +%Y%m%d_%H%M%S)
+SOURCE_DIR="/volume1/docker/catequesis/data"
+
+# Crear directorio de backup
+mkdir -p "$BACKUP_DIR"
+
+# Backup con rsync (preserva permisos y enlaces)
+rsync -av --exclude='.env' \
+    "$SOURCE_DIR/" \
+    "$BACKUP_DIR/backup_$DATE/"
+
+# Comprimir backup
+tar -czf "$BACKUP_DIR/catequesis_$DATE.tar.gz" \
+    -C "$BACKUP_DIR" "backup_$DATE"
+
+# Limpiar directorio temporal
+rm -rf "$BACKUP_DIR/backup_$DATE"
+
+# Mantener solo los últimos 10 backups
+ls -t "$BACKUP_DIR"/*.tar.gz | tail -n +11 | xargs rm -f
+
+echo "Backup completado: catequesis_$DATE.tar.gz"
+```
+
+#### Programar Backup con Cron
+
+```bash
+# Editar crontab del usuario admin
+crontab -e
+
+# Añadir línea para backup diario a las 2:00 AM
+0 2 * * * /volume1/docker/catequesis/scripts/backup/synology-backup.sh
+
+# Verificar crontab
+crontab -l
+```
+
+#### Restauración de Backup
+
+```bash
+# Parar contenedores
+sudo docker compose down
+
+# Restaurar desde backup
+cd /volume1/docker/catequesis
+tar -xzf /volume1/backups/catequesis/catequesis_YYYYMMDD_HHMMSS.tar.gz
+
+# Restaurar permisos
+sudo chown -R 1001:1001 data/
+sudo chmod -R 755 data/
+
+# Reiniciar contenedores
+sudo docker compose up -d
 ```
 
 ## 🧪 Pasos de Prueba
